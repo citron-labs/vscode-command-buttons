@@ -1,0 +1,36 @@
+<!-- save as images/icon.svg, then export to 128x128 PNG -->
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded background -->
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#bg)"/>
+
+  <!-- terminal-style chevron > -->
+  <path
+    d="M42 40 L62 52 L42 64"
+    fill="none"
+    stroke="#4ade80"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- cursor bar -->
+  <line
+    x1="66" y1="52"
+    x2="86" y2="52"
+    stroke="#22c55e"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+
+  <!-- small buttons in bottom-right -->
+  <rect x="78" y="78" width="12" height="12" rx="3" fill="#64748b"/>
+  <rect x="94" y="78" width="12" height="12" rx="3" fill="#4ade80"/>
+  <rect x="78" y="94" width="12" height="12" rx="3" fill="#0ea5e9"/>
+</svg>

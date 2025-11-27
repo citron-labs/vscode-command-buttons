@@ -1,0 +1,71 @@
+{
+  "name": "command-buttons-panel",
+  "displayName": "Command Buttons Panel",
+  "description": "Explorer side panel with draggable buttons for your favorite terminal commands. Run, copy, or prompt for input in a dedicated terminal.",
+  "version": "0.1.0",
+  "publisher": "citron",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Productivity",
+    "Other"
+  ],
+  "keywords": [
+    "commands",
+    "terminal",
+    "buttons",
+    "tasks",
+    "workflow",
+    "automation",
+    "shortcut",
+    "runner",
+    "side panel",
+    "grid",
+    "webview"
+  ],
+  "icon": "images/command-buttons-icon.png",
+  "galleryBanner": {
+    "color": "#111827",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/citron/command-buttons-panel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/citron/command-buttons-panel/issues"
+  },
+  "homepage": "https://github.com/citron/command-buttons-panel",
+  "license": "MIT",
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:commandButtonsView"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "commandButtonsView",
+          "name": "Command Buttons"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish",
+    "test": "echo \"No tests\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.26.1",
+    "typescript": "^5.0.0"
+  }
+}
