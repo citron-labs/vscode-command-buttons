@@ -2,13 +2,12 @@
   "name": "command-buttons-panel",
   "displayName": "Command Buttons Panel",
   "description": "Explorer side panel with draggable buttons for your favorite terminal commands. Run, copy, or prompt for input in a dedicated terminal.",
-  "version": "0.1.0",
-  "publisher": "citron",
+  "version": "0.1.1",
+  "publisher": "Citronone",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Productivity",
     "Other"
   ],
   "keywords": [
@@ -31,16 +30,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/citron/command-buttons-panel.git"
+    "url": "https://github.com/citron-labs/vscode-command-buttons.git"
   },
   "bugs": {
-    "url": "https://github.com/citron/command-buttons-panel/issues"
+    "url": "https://github.com/citron-labs/vscode-command-buttons"
   },
-  "homepage": "https://github.com/citron/command-buttons-panel",
+  "homepage": "https://citron.one/",
   "license": "MIT",
   "activationEvents": [
-    "onStartupFinished",
-    "onView:commandButtonsView"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -49,7 +47,8 @@
         {
           "type": "webview",
           "id": "commandButtonsView",
-          "name": "Command Buttons"
+          "name": "Command Buttons",
+          "icon": "images/command-buttons-icon.png"
         }
       ]
     }

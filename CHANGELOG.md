@@ -2,6 +2,15 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
+## [0.1.1] - 2025-11-27
+
+### Added
+- Marketplace preview screenshots for the README.
+
+### Changed
+- Documented predefined variables and selection placeholders in the README.
+- Fixed minor encoding issues in the docs.
+
 ## [0.1.0] - 2025-11-18
 
 ### Added
