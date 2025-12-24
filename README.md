@@ -62,6 +62,23 @@ Use these placeholders in commands (they mirror VS Code task variables):
 - Use the preset dropdown to add a command from the built-in library (npm dev/build/test, git status, docker compose up).
 - Edit or delete presets after adding them like any other command.
 
+## Visual guide
+### Adding commands from presets
+![GIF showing how to add a preset command via the dropdown](instructions/AddingCommandsfromPresets.gif)
+Use the preset picker illustrated above to add common commands with one click.
+
+### Adding a custom command with a custom label
+![GIF demonstrating entering a custom command and label](instructions/addingCustomCommandwithCustomLabel.gif)
+Create your own commands, give them descriptive labels, and reorder them immediately after adding.
+
+### Display options
+![GIF showing toggles for different grid/list layouts](instructions/displayOptions.gif)
+Switch between grid/list layouts, collapse the list, and pick 1–4 columns so your preferred layout stays front and center.
+
+### Show or hide commands
+![GIF of hiding and showing commands from the list](instructions/showHideCommands.gif)
+Toggle visibility on commands you only need sometimes so the panel stays focused on what matters.
+
 ## Development
 - `npm install`
 - `npm run watch` to build on save, or `npm run compile` for a one-off build.
@@ -73,6 +90,17 @@ Use these placeholders in commands (they mirror VS Code task variables):
 - `.vscodeignore` excludes source and packaged `.vsix` files from the extension bundle.
 
 ## Release Notes
+### 0.2.1
+- Added visual guide GIFs for presets, custom commands, layout toggles, and show/hide controls to the README.
+
+### 0.2.0
+- Added an editable preset library with add/remove actions, restore defaults, and Settings Sync persistence.
+- Updated the Marketplace preview images to show the grid and compact views.
+- Fixed the dark mode preset dropdown background for better contrast.
+
+### 0.1.2
+- Fixed cached command and grid setting persistence so Marketplace installs keep local data.
+
 ### 0.1.1
 - Documented predefined variables and selection placeholders.
 - Added Marketplace preview screenshots.
