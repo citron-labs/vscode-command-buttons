@@ -11,18 +11,25 @@ type CommandItem = {
   inputValue?: string;
 };
 
+type PresetItem = {
+  id: string;
+  label: string;
+  text: string;
+};
+
 const STORAGE_KEY = 'commandButtons.commands';
-const PRESET_LIBRARY: CommandItem[] = [
-  { id: 'preset-npm-dev', label: 'npm dev', text: 'npm run dev', addNewLine: true },
-  { id: 'preset-npm-build', label: 'npm build', text: 'npm run build', addNewLine: true },
-  { id: 'preset-npm-test', label: 'npm test', text: 'npm test', addNewLine: true },
-  { id: 'preset-git-status', label: 'git status', text: 'git status', addNewLine: true },
-  { id: 'preset-dc-up', label: 'docker compose up', text: 'docker compose up', addNewLine: true }
+const PRESET_STORAGE_KEY = 'commandButtons.presets';
+const PRESET_DEFAULTS: PresetItem[] = [
+  { id: 'preset-npm-dev', label: 'npm dev', text: 'npm run dev' },
+  { id: 'preset-npm-build', label: 'npm build', text: 'npm run build' },
+  { id: 'preset-npm-test', label: 'npm test', text: 'npm test' },
+  { id: 'preset-git-status', label: 'git status', text: 'git status' },
+  { id: 'preset-dc-up', label: 'docker compose up', text: 'docker compose up' }
 ];
 
 export function activate(context: vscode.ExtensionContext) {
-  // Optional: allow Settings Sync to sync the commands between machines
-  context.globalState.setKeysForSync?.([STORAGE_KEY]);
+  // Optional: allow Settings Sync to sync global commands/presets between machines
+  context.globalState.setKeysForSync?.([STORAGE_KEY, PRESET_STORAGE_KEY]);
 
   const provider = new CommandButtonsViewProvider(context);
 
@@ -46,10 +53,12 @@ export function deactivate() {
 class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _commands: CommandItem[] = [];
+  private _presets: PresetItem[] = [];
   private _terminal?: vscode.Terminal;
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this._commands = this.loadCommands();
+    this._presets = this.loadPresets();
   }
 
   public resolveWebviewView(
@@ -80,14 +89,24 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           } else {
             this.postCommands();
           }
+          this._presets = this.loadPresets();
+          this.postPresets();
           break;
         }
         case 'addCommand': {
           await this.addCommand(message.label, message.text);
           break;
         }
+        case 'addPreset': {
+          await this.addPreset(message.label, message.text);
+          break;
+        }
         case 'deleteCommand': {
           await this.deleteCommand(message.id);
+          break;
+        }
+        case 'removePreset': {
+          await this.removePreset(message.id);
           break;
         }
         case 'runCommand': {
@@ -108,6 +127,10 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
         }
         case 'updateCommandInput': {
           await this.updateCommandInputValue(message.id, message.inputValue ?? '');
+          break;
+        }
+        case 'restorePresetDefaults': {
+          await this.restorePresetDefaults();
           break;
         }
       }
@@ -168,6 +191,52 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  private get presetStorage(): vscode.Memento {
+    return this.context.globalState;
+  }
+
+  private loadPresets(): PresetItem[] {
+    const storedPresets = this.presetStorage.get<PresetItem[]>(PRESET_STORAGE_KEY);
+    if (Array.isArray(storedPresets)) {
+      return this.normalizePresets(storedPresets);
+    }
+    return this.normalizePresets(PRESET_DEFAULTS);
+  }
+
+  private normalizePresets(presets: PresetItem[]): PresetItem[] {
+    if (!Array.isArray(presets)) {
+      return [];
+    }
+    const normalized: PresetItem[] = [];
+    for (const preset of presets) {
+      const text = String(preset?.text ?? '').trim();
+      if (!text) {
+        continue;
+      }
+      const label = String(preset?.label ?? text).trim() || text;
+      const id = String(preset?.id ?? this.createPresetId());
+      normalized.push({ id, label, text });
+    }
+    return normalized;
+  }
+
+  private async savePresets() {
+    this._presets = this.normalizePresets(this._presets);
+    await this.presetStorage.update(PRESET_STORAGE_KEY, this._presets);
+    this.postPresets();
+  }
+
+  private postPresets() {
+    this._view?.webview.postMessage({
+      type: 'setPresets',
+      presets: this._presets
+    });
+  }
+
+  private createPresetId(): string {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
   private async addCommand(label: string, text: string) {
     const trimmedLabel = (label ?? '').trim();
     const trimmedText = (text ?? '').trim();
@@ -197,9 +266,52 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     await this.saveCommands();
   }
 
+  private async addPreset(label: string, text: string) {
+    const trimmedLabel = (label ?? '').trim();
+    const trimmedText = (text ?? '').trim();
+
+    if (!trimmedText) {
+      vscode.window.showWarningMessage('Please provide a command to save as a preset.');
+      return;
+    }
+
+    const finalLabel = trimmedLabel || trimmedText;
+    const exists = this._presets.some(
+      (preset) => preset.label === finalLabel && preset.text === trimmedText
+    );
+    if (exists) {
+      vscode.window.showInformationMessage('That preset already exists.');
+      return;
+    }
+
+    this._presets = [
+      ...this._presets,
+      {
+        id: this.createPresetId(),
+        label: finalLabel,
+        text: trimmedText
+      }
+    ];
+
+    await this.savePresets();
+  }
+
   private async deleteCommand(id: string) {
     this._commands = this._commands.filter((c) => c.id !== id);
     await this.saveCommands();
+  }
+
+  private async removePreset(id: string) {
+    if (!id) {
+      return;
+    }
+    this._presets = this._presets.filter((preset) => preset.id !== id);
+    await this.savePresets();
+  }
+
+  private async restorePresetDefaults() {
+    this._presets = this.normalizePresets(PRESET_DEFAULTS);
+    await this.savePresets();
   }
 
   private async reorderCommands(fromIndex: number, toIndex: number) {
@@ -629,6 +741,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       display: flex;
       gap: 0.25rem;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     select {
@@ -683,6 +796,15 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
 
     .btn-delete:hover {
       background-color: var(--danger-hover);
+    }
+
+    .btn-secondary {
+      background-color: rgba(0,0,0,0.15);
+      color: inherit;
+    }
+
+    .btn-secondary:hover {
+      background-color: rgba(0,0,0,0.25);
     }
 
     .commands-list {
@@ -781,6 +903,12 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       .toggle-btn:hover {
         background-color: rgba(255,255,255,0.15);
       }
+      .btn-secondary {
+        background-color: rgba(255,255,255,0.08);
+      }
+      .btn-secondary:hover {
+        background-color: rgba(255,255,255,0.16);
+      }
       select {
         border-color: var(--border-dark);
         background-color: rgba(0,0,0,0.35);
@@ -845,7 +973,9 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           <select id="presetSelect">
             <option value="">Preset library...</option>
           </select>
-          <button id="presetAddBtn" title="Add selected preset">Add preset</button>
+          <button id="presetAddBtn" title="Save the current inputs as a preset">Add preset</button>
+          <button id="presetRemoveBtn" class="btn-delete" title="Remove selected preset">Remove</button>
+          <button id="presetRestoreBtn" class="btn-secondary" title="Restore default presets">Restore defaults</button>
         </div>
         <div class="add-row">
           <input
@@ -880,6 +1010,8 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     const mainPanel = document.getElementById('mainPanel');
     const presetSelect = document.getElementById('presetSelect');
     const presetAddBtn = document.getElementById('presetAddBtn');
+    const presetRemoveBtn = document.getElementById('presetRemoveBtn');
+    const presetRestoreBtn = document.getElementById('presetRestoreBtn');
 
     const cols1Btn = document.getElementById('cols1Btn');
     const cols2Btn = document.getElementById('cols2Btn');
@@ -892,12 +1024,13 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     const modeDynamicAllBtn = document.getElementById('modeDynamicAllBtn');
     const collapseToggle = document.getElementById('collapseToggle');
 
-    const presetLibrary = ${JSON.stringify(PRESET_LIBRARY)};
+    let presetLibrary = normalizePresetsForView(${JSON.stringify(this._presets)});
     const PLACEHOLDER_TOKEN = '\${input}';
     const MODE_SEQUENCE = ['enter', 'copy', 'dynamic'];
 
     let viewState = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
     const cachedCommands = Array.isArray(viewState.commands) ? viewState.commands : [];
+    const cachedPresets = Array.isArray(viewState.presets) ? viewState.presets : [];
     let commands = normalizeCommandsForView(cachedCommands);
     let gridColumns = 2;
     if (Number.isInteger(viewState.gridColumns)) {
@@ -910,6 +1043,10 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     let dragIndex = null;
     let globalRunMode = 'enter';
     let isCollapsed = Boolean(viewState.collapsed);
+
+    if (cachedPresets.length) {
+      presetLibrary = normalizePresetsForView(cachedPresets);
+    }
 
     populatePresetDropdown();
     setCollapsed(isCollapsed);
@@ -979,6 +1116,23 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           inputValue: cmd.inputValue ?? ''
         };
       });
+    }
+
+    function normalizePresetsForView(list) {
+      if (!Array.isArray(list)) {
+        return [];
+      }
+      const normalized = [];
+      for (const preset of list) {
+        const text = String(preset?.text ?? '').trim();
+        if (!text) {
+          continue;
+        }
+        const label = String(preset?.label ?? text).trim() || text;
+        const id = String(preset?.id ?? '');
+        normalized.push({ id, label, text });
+      }
+      return normalized;
     }
 
     function getModeLabel(runMode) {
@@ -1271,18 +1425,30 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       commandInput.value = preset.text;
     }
 
-    function addPresetCommand() {
+    function addPresetFromInputs() {
+      const label = labelInput.value.trim();
+      const text = commandInput.value.trim();
+      vscode.postMessage({ type: 'addPreset', label, text });
+    }
+
+    function removeSelectedPreset() {
+      if (!presetSelect.value) {
+        return;
+      }
       const selectedIndex = Number(presetSelect.value);
       if (Number.isNaN(selectedIndex)) {
         return;
       }
       const preset = presetLibrary[selectedIndex];
-      if (!preset) {
+      if (!preset || !preset.id) {
         return;
       }
-      vscode.postMessage({ type: 'addCommand', label: preset.label, text: preset.text });
-      labelInput.value = '';
-      commandInput.value = '';
+      vscode.postMessage({ type: 'removePreset', id: preset.id });
+      presetSelect.value = '';
+    }
+
+    function restorePresetDefaults() {
+      vscode.postMessage({ type: 'restorePresetDefaults' });
       presetSelect.value = '';
     }
 
@@ -1388,10 +1554,21 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     modeDynamicAllBtn.addEventListener('click', () => toggleAllModes('dynamic'));
 
     presetAddBtn.addEventListener('click', () => {
-      addPresetCommand();
+      addPresetFromInputs();
+    });
+
+    presetRemoveBtn?.addEventListener('click', () => {
+      removeSelectedPreset();
+    });
+
+    presetRestoreBtn?.addEventListener('click', () => {
+      restorePresetDefaults();
     });
 
     presetSelect.addEventListener('change', () => {
+      if (!presetSelect.value) {
+        return;
+      }
       const idx = Number(presetSelect.value);
       if (!Number.isNaN(idx)) {
         applyPresetToInputs(idx);
@@ -1423,6 +1600,12 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           updateGlobalModeFromCommands();
           renderGrid();
           renderCommands();
+          break;
+        }
+        case 'setPresets': {
+          presetLibrary = normalizePresetsForView(message.presets);
+          persistViewState({ presets: presetLibrary });
+          populatePresetDropdown();
           break;
         }
       }
