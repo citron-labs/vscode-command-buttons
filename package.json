@@ -2,7 +2,7 @@
   "name": "command-buttons-panel",
   "displayName": "Command Buttons Panel",
   "description": "Explorer side panel with draggable buttons for your favorite terminal commands. Run, copy, or prompt for input in a dedicated terminal.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "Citronone",
   "engines": {
     "vscode": "^1.85.0"

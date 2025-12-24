@@ -2,7 +2,7 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
-## [0.2.1] - 2025-12-23
+## [0.2.2] - 2025-12-23
 
 ### Added
 - Visual guide GIFs for presets, custom commands, layout toggling, and show/hide controls in the README.
