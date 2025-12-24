@@ -12,7 +12,7 @@ Run your go-to terminal commands from a draggable grid in the Explorer. Add butt
 
 ## Preview
 ![Command grid preview showing draggable buttons and run modes](images/preview-grid.png)
-![List view with presets, toolbar, and dynamic input fields](images/preview-list.png)
+![Compact list view with presets and dynamic input fields](images/preview-compact.png)
 
 ## Usage
 1. Open the Explorer view and find **Command Buttons**.

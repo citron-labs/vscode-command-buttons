@@ -2,6 +2,11 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
+## [0.1.2] - 2025-12-23
+
+### Fixed
+- Persisted cached commands and grid settings so Marketplace installs keep local data.
+
 ## [0.1.1] - 2025-11-27
 
 ### Added

@@ -69,7 +69,17 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     webview.onDidReceiveMessage(async (message) => {
       switch (message.type) {
         case 'ready': {
-          this.postCommands();
+          this._commands = this.loadCommands();
+          if (
+            !this._commands.length &&
+            Array.isArray(message.cachedCommands) &&
+            message.cachedCommands.length
+          ) {
+            this._commands = this.normalizeCommands(message.cachedCommands);
+            await this.saveCommands();
+          } else {
+            this.postCommands();
+          }
           break;
         }
         case 'addCommand': {
@@ -773,6 +783,11 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       }
       select {
         border-color: var(--border-dark);
+        background-color: rgba(0,0,0,0.35);
+      }
+      select option {
+        background-color: #1e1e1e;
+        color: inherit;
       }
       .grid-button-wrapper .mode-chip {
         border-color: var(--border-dark);
@@ -882,15 +897,28 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     const MODE_SEQUENCE = ['enter', 'copy', 'dynamic'];
 
     let viewState = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
-    let commands = [];
+    const cachedCommands = Array.isArray(viewState.commands) ? viewState.commands : [];
+    let commands = normalizeCommandsForView(cachedCommands);
     let gridColumns = 2;
-    let gridPosition = 'top';
+    if (Number.isInteger(viewState.gridColumns)) {
+      const storedColumns = Number(viewState.gridColumns);
+      if (storedColumns >= 1 && storedColumns <= 4) {
+        gridColumns = storedColumns;
+      }
+    }
+    let gridPosition = viewState.gridPosition === 'bottom' ? 'bottom' : 'top';
     let dragIndex = null;
     let globalRunMode = 'enter';
     let isCollapsed = Boolean(viewState.collapsed);
 
     populatePresetDropdown();
     setCollapsed(isCollapsed);
+    setGridColumns(gridColumns);
+    setGridPosition(gridPosition);
+    if (commands.length) {
+      updateGlobalModeFromCommands();
+      renderCommands();
+    }
 
     commandsGrid.addEventListener('dragover', handleGridDragOver);
     commandsGrid.addEventListener('drop', handleGridDrop);
@@ -936,6 +964,21 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
         return mode;
       }
       return cmd.addNewLine === false ? 'copy' : 'enter';
+    }
+
+    function normalizeCommandsForView(list) {
+      if (!Array.isArray(list)) {
+        return [];
+      }
+      return list.map((cmd) => {
+        const runMode = getRunMode(cmd);
+        return {
+          ...cmd,
+          runMode,
+          addNewLine: runMode !== 'copy',
+          inputValue: cmd.inputValue ?? ''
+        };
+      });
     }
 
     function getModeLabel(runMode) {
@@ -1251,6 +1294,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       else if (cols === 3) cols3Btn.classList.add('active');
       else if (cols === 4) cols4Btn.classList.add('active');
       renderGrid();
+      persistViewState({ gridColumns: cols });
     }
 
     function setGridPosition(pos) {
@@ -1264,6 +1308,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
         posTopBtn.classList.add('active');
         posBotBtn.classList.remove('active');
       }
+      persistViewState({ gridPosition: pos });
     }
 
     function handleDragStart(event) {
@@ -1373,15 +1418,8 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       const message = event.data;
       switch (message.type) {
         case 'setCommands': {
-          commands = (message.commands || []).map((cmd) => {
-            const runMode = getRunMode(cmd);
-            return {
-              ...cmd,
-              runMode,
-              addNewLine: runMode !== 'copy',
-              inputValue: cmd.inputValue ?? ''
-            };
-          });
+          commands = normalizeCommandsForView(message.commands);
+          persistViewState({ commands });
           updateGlobalModeFromCommands();
           renderGrid();
           renderCommands();
@@ -1390,7 +1428,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       }
     });
 
-    vscode.postMessage({ type: 'ready' });
+    vscode.postMessage({ type: 'ready', cachedCommands: commands });
   </script>
 </body>
 </html>`;
