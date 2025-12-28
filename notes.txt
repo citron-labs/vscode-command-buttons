@@ -1,1 +1,6 @@
-s
+when commands are collapsed/hidden, the button under each command to set if its 'Copy+Enter' or 'Copy only' should be hidden as well.
+also these options should be updated to include this list of options:
+- Copy + Enter
+- Copy only to clipboard
+- Copy only to terminal
+- Dynamic Input

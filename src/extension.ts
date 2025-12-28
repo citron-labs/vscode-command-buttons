@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 
-type CommandMode = 'enter' | 'copy' | 'dynamic';
+type CommandMode = 'enter' | 'clipboard' | 'terminal' | 'dynamic';
+type LegacyCommandMode = CommandMode | 'copy';
 
 type CommandItem = {
   id: string;
   label: string;
   text: string;
   addNewLine?: boolean;
-  runMode?: CommandMode;
+  runMode?: LegacyCommandMode;
   inputValue?: string;
 };
 
@@ -110,7 +111,11 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'runCommand': {
-          await this.runCommand(message.text, message.addNewLine !== false);
+          const runMode = this.normalizeRunMode(
+            message.runMode as LegacyCommandMode,
+            message.addNewLine
+          );
+          await this.runCommand(message.text, runMode);
           break;
         }
         case 'reorderCommands': {
@@ -147,6 +152,31 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     return this.hasWorkspace ? this.context.workspaceState : this.context.globalState;
   }
 
+  private normalizeRunMode(
+    runMode: LegacyCommandMode | undefined,
+    addNewLine?: boolean
+  ): CommandMode {
+    if (
+      runMode === 'enter' ||
+      runMode === 'clipboard' ||
+      runMode === 'terminal' ||
+      runMode === 'dynamic'
+    ) {
+      return runMode;
+    }
+    if (runMode === 'copy') {
+      return 'clipboard';
+    }
+    if (addNewLine === false) {
+      return 'clipboard';
+    }
+    return 'enter';
+  }
+
+  private shouldSendEnter(runMode: CommandMode): boolean {
+    return runMode === 'enter' || runMode === 'dynamic';
+  }
+
   private loadCommands(): CommandItem[] {
     const workspaceCommands = this.context.workspaceState.get<CommandItem[]>(STORAGE_KEY);
     if (this.hasWorkspace && Array.isArray(workspaceCommands)) {
@@ -163,14 +193,13 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     return commands.map((cmd) => {
       const text = cmd.text ?? '';
       const label = (cmd.label ?? text)?.trim() || text || '';
-      const fallbackMode: CommandMode = cmd.addNewLine === false ? 'copy' : 'enter';
-      const runMode: CommandMode = (cmd.runMode as CommandMode) ?? fallbackMode;
+      const runMode = this.normalizeRunMode(cmd.runMode, cmd.addNewLine);
       const inputValue = cmd.inputValue ?? '';
       return {
         ...cmd,
         text,
         label,
-        addNewLine: runMode !== 'copy',
+        addNewLine: this.shouldSendEnter(runMode),
         runMode,
         inputValue
       };
@@ -352,20 +381,26 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     await this.saveCommands();
   }
 
-  private async updateCommandMode(id: string, runMode: CommandMode) {
+  private async updateCommandMode(id: string, runMode: LegacyCommandMode) {
+    const normalizedMode = this.normalizeRunMode(runMode);
     this._commands = this._commands.map((cmd) =>
       cmd.id === id
-        ? { ...cmd, runMode, addNewLine: runMode !== 'copy' }
+        ? {
+            ...cmd,
+            runMode: normalizedMode,
+            addNewLine: this.shouldSendEnter(normalizedMode)
+          }
         : cmd
     );
     await this.saveCommands();
   }
 
-  private async updateAllCommandModes(runMode: CommandMode) {
+  private async updateAllCommandModes(runMode: LegacyCommandMode) {
+    const normalizedMode = this.normalizeRunMode(runMode);
     this._commands = this._commands.map((cmd) => ({
       ...cmd,
-      runMode,
-      addNewLine: runMode !== 'copy'
+      runMode: normalizedMode,
+      addNewLine: this.shouldSendEnter(normalizedMode)
     }));
     await this.saveCommands();
   }
@@ -387,17 +422,19 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     return this._terminal;
   }
 
-  private async runCommand(text: string, addNewLine: boolean = true) {
-    const terminal = this.ensureTerminal();
-    terminal.sendText(text, addNewLine); // true -> add newline (ENTER)
-    if (!addNewLine) {
+  private async runCommand(text: string, runMode: CommandMode) {
+    if (runMode === 'clipboard') {
       try {
         await vscode.env.clipboard.writeText(text);
         vscode.window.showInformationMessage('Copied to Clipboard');
       } catch {
         vscode.window.showErrorMessage('Failed to copy to clipboard.');
       }
+      return;
     }
+
+    const terminal = this.ensureTerminal();
+    terminal.sendText(text, this.shouldSendEnter(runMode)); // true -> add newline (ENTER)
   }
 
   // --- Webview HTML -------------------------------------------------------
@@ -419,16 +456,29 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
   <style>
     :root {
       color-scheme: light dark;
-      --bg: transparent;
-      --bg-panel: rgba(0,0,0,0.05);
-      --bg-panel-dark: rgba(255,255,255,0.04);
-      --border: rgba(0,0,0,0.1);
-      --border-dark: rgba(255,255,255,0.1);
-      --accent: #4caf50;
-      --accent-hover: #43a047;
-      --danger: #e53935;
-      --danger-hover: #c62828;
-      --text-muted: rgba(255,255,255,0.7);
+      --bg: var(--vscode-sideBar-background);
+      --fg: var(--vscode-sideBar-foreground, var(--vscode-foreground));
+      --surface: var(--vscode-editorWidget-background);
+      --border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(0,0,0,0.2)));
+      --accent: var(--vscode-button-background, #4caf50);
+      --accent-hover: var(--vscode-button-hoverBackground, #43a047);
+      --accent-fg: var(--vscode-button-foreground, #ffffff);
+      --secondary-bg: var(--vscode-button-secondaryBackground, rgba(0,0,0,0.15));
+      --secondary-hover: var(--vscode-button-secondaryHoverBackground, rgba(0,0,0,0.25));
+      --secondary-fg: var(--vscode-button-secondaryForeground, var(--fg));
+      --input-bg: var(--vscode-input-background, transparent);
+      --input-border: var(--vscode-input-border, var(--border));
+      --input-fg: var(--vscode-input-foreground, var(--fg));
+      --dropdown-bg: var(--vscode-dropdown-background, var(--surface));
+      --dropdown-border: var(--vscode-dropdown-border, var(--border));
+      --dropdown-fg: var(--vscode-dropdown-foreground, var(--fg));
+      --danger: var(--vscode-inputValidation-errorBackground, #e53935);
+      --danger-hover: var(--vscode-inputValidation-errorBackground, #c62828);
+      --danger-fg: var(--vscode-inputValidation-errorForeground, #ffffff);
+      --warning-bg: var(--vscode-inputValidation-warningBackground, rgba(255,165,0,0.12));
+      --warning-border: var(--vscode-inputValidation-warningBorder, rgba(255,165,0,0.6));
+      --warning-fg: var(--vscode-inputValidation-warningForeground, rgba(255,140,0,0.95));
+      --focus: var(--vscode-focusBorder, var(--accent));
     }
 
     * {
@@ -445,6 +495,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 13px;
       background-color: var(--bg);
+      color: var(--fg);
       overflow-x: hidden;
       min-height: 100%;
     }
@@ -496,15 +547,15 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       width: 1.5rem;
       height: 1.5rem;
       border-radius: 50%;
-      border: 1px solid rgba(0,0,0,0.2);
-      background-color: rgba(0,0,0,0.05);
-      color: inherit;
+      border: 1px solid var(--border);
+      background-color: var(--secondary-bg);
+      color: var(--secondary-fg);
       font-size: 11px;
       cursor: pointer;
     }
 
     .collapse-toggle:hover {
-      background-color: rgba(0,0,0,0.15);
+      background-color: var(--secondary-hover);
     }
 
     .panel.grid-bottom .grid-controls {
@@ -561,6 +612,10 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       height: auto;
     }
 
+    body.grid-only-mode .grid-button-wrapper .mode-chip {
+      display: none;
+    }
+
     .grid-controls label {
       font-size: 10px;
       opacity: 0.6;
@@ -570,17 +625,17 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     .toggle-btn {
       padding: 0.15rem 0.35rem;
       font-size: 10px;
-      background-color: rgba(0,0,0,0.15);
-      color: inherit;
+      background-color: var(--secondary-bg);
+      color: var(--secondary-fg);
     }
 
     .toggle-btn:hover {
-      background-color: rgba(0,0,0,0.25);
+      background-color: var(--secondary-hover);
     }
 
     .toggle-btn.active {
       background-color: var(--accent);
-      color: white;
+      color: var(--accent-fg);
     }
 
     .toggle-btn.active:hover {
@@ -590,24 +645,27 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     .mode-toggle {
       padding: 0.15rem 0.35rem;
       font-size: 10px;
-      border: 1px solid rgba(0,0,0,0.15);
-      background-color: rgba(0,0,0,0.08);
-      color: inherit;
+      border: 1px solid var(--border);
+      background-color: var(--secondary-bg);
+      color: var(--secondary-fg);
     }
 
     .mode-toggle.mode-enter {
       border-color: var(--accent);
-      background-color: rgba(76, 175, 80, 0.15);
+      background-color: var(--surface);
     }
 
+    .mode-toggle.mode-clipboard,
+    .mode-toggle.mode-terminal,
     .mode-toggle.mode-copy {
-      border-color: rgba(0,0,0,0.2);
-      background-color: rgba(0,0,0,0.05);
+      border-color: var(--border);
+      background-color: var(--secondary-bg);
     }
 
     .mode-toggle.mode-dynamic {
-      border-color: rgba(255,165,0,0.6);
-      background-color: rgba(255,165,0,0.12);
+      border-color: var(--warning-border);
+      background-color: var(--warning-bg);
+      color: var(--warning-fg);
     }
 
     .mode-toggle.small {
@@ -620,8 +678,8 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       gap: 0.25rem;
       padding: 0.35rem;
       border-radius: 6px;
-      border: 1px solid rgba(0,0,0,0.2);
-      background-color: rgba(0,0,0,0.02);
+      border: 1px solid var(--border);
+      background-color: var(--surface);
       order: 1;
       width: 100%;
       min-width: 0;
@@ -640,6 +698,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       font-weight: 500;
       font-size: 12px;
       background-color: var(--accent);
+      color: var(--accent-fg);
       cursor: grab;
       user-select: none;
       white-space: nowrap;
@@ -674,16 +733,16 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       width: 100%;
       padding: 0.25rem 0.35rem;
       border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.2);
-      background-color: rgba(0,0,0,0.02);
+      border: 1px solid var(--input-border);
+      background-color: var(--input-bg);
       font-size: 11px;
-      color: inherit;
+      color: var(--input-fg);
     }
 
     .dynamic-input:focus {
       outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(76,175,80,0.2);
+      border-color: var(--focus);
+      box-shadow: 0 0 0 1px var(--focus);
     }
 
     .command-dynamic-row {
@@ -704,27 +763,29 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       justify-content: center;
       font-size: 10px;
       border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.2);
-      background-color: rgba(0,0,0,0.04);
+      border: 1px solid var(--border);
+      background-color: var(--secondary-bg);
       padding: 0.15rem 0.25rem;
       cursor: pointer;
-      color: inherit;
+      color: var(--secondary-fg);
     }
 
     .grid-button-wrapper .mode-chip.mode-enter {
       border-color: var(--accent);
-      background-color: rgba(76, 175, 80, 0.12);
+      background-color: var(--surface);
     }
 
+    .grid-button-wrapper .mode-chip.mode-clipboard,
+    .grid-button-wrapper .mode-chip.mode-terminal,
     .grid-button-wrapper .mode-chip.mode-copy {
-      border-color: rgba(0,0,0,0.2);
-      background-color: rgba(0,0,0,0.05);
+      border-color: var(--border);
+      background-color: var(--secondary-bg);
     }
 
     .grid-button-wrapper .mode-chip.mode-dynamic {
-      border-color: rgba(255,165,0,0.5);
-      background-color: rgba(255,165,0,0.12);
-      color: rgba(255,140,0,0.95);
+      border-color: var(--warning-border);
+      background-color: var(--warning-bg);
+      color: var(--warning-fg);
     }
 
     .grid-empty {
@@ -736,13 +797,13 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     }
 
     .add-form {
-      border: 1px solid transparent;
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.45rem;
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
-      background-color: rgba(0,0,0,0.02);
+      background-color: var(--surface);
     }
 
     .preset-row {
@@ -755,11 +816,16 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     select {
       flex: 1;
       border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.3);
+      border: 1px solid var(--dropdown-border);
       padding: 0.25rem 0.35rem;
       font-size: 12px;
-      background-color: transparent;
-      color: inherit;
+      background-color: var(--dropdown-bg);
+      color: var(--dropdown-fg);
+    }
+
+    select option {
+      background-color: var(--dropdown-bg);
+      color: var(--dropdown-fg);
     }
 
     .add-row {
@@ -770,17 +836,17 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     input[type="text"] {
       flex: 1;
       border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.3);
+      border: 1px solid var(--input-border);
       padding: 0.25rem 0.35rem;
       font-size: 12px;
-      background-color: transparent;
-      color: inherit;
+      background-color: var(--input-bg);
+      color: var(--input-fg);
     }
 
     input[type="text"]:focus {
-      outline: 1px solid var(--accent);
+      outline: 1px solid var(--focus);
       outline-offset: 1px;
-      border-color: var(--accent);
+      border-color: var(--focus);
     }
 
     button {
@@ -790,7 +856,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       padding: 0.25rem 0.5rem;
       cursor: pointer;
       background-color: var(--accent);
-      color: white;
+      color: var(--accent-fg);
       white-space: nowrap;
     }
 
@@ -800,6 +866,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
 
     .btn-delete {
       background-color: var(--danger);
+      color: var(--danger-fg);
     }
 
     .btn-delete:hover {
@@ -807,12 +874,12 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     }
 
     .btn-secondary {
-      background-color: rgba(0,0,0,0.15);
-      color: inherit;
+      background-color: var(--secondary-bg);
+      color: var(--secondary-fg);
     }
 
     .btn-secondary:hover {
-      background-color: rgba(0,0,0,0.25);
+      background-color: var(--secondary-hover);
     }
 
     .commands-list {
@@ -820,7 +887,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       overflow-y: auto;
       overflow-x: hidden;
       border-radius: 6px;
-      border: 1px solid rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
       padding: 0.35rem;
       display: flex;
       flex-direction: column;
@@ -841,8 +908,8 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       gap: 0.15rem;
       padding: 0.3rem;
       border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.15);
-      background-color: rgba(0,0,0,0.02);
+      border: 1px solid var(--border);
+      background-color: var(--surface);
     }
 
     .command-main-row {
@@ -882,71 +949,6 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       opacity: 0.6;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .add-form {
-        background-color: var(--bg-panel-dark);
-        border-color: var(--border-dark);
-      }
-      .commands-list {
-        border-color: var(--border-dark);
-      }
-      .command-item {
-        border-color: var(--border-dark);
-        background-color: rgba(255,255,255,0.03);
-      }
-      input[type="text"] {
-        border-color: var(--border-dark);
-      }
-      .commands-grid {
-        border-color: var(--border-dark);
-        background-color: rgba(255,255,255,0.03);
-      }
-      .dynamic-input {
-        border-color: var(--border-dark);
-        background-color: rgba(255,255,255,0.04);
-      }
-      .toggle-btn {
-        background-color: rgba(255,255,255,0.08);
-      }
-      .toggle-btn:hover {
-        background-color: rgba(255,255,255,0.15);
-      }
-      .btn-secondary {
-        background-color: rgba(255,255,255,0.08);
-      }
-      .btn-secondary:hover {
-        background-color: rgba(255,255,255,0.16);
-      }
-      select {
-        border-color: var(--border-dark);
-        background-color: rgba(0,0,0,0.35);
-      }
-      select option {
-        background-color: #1e1e1e;
-        color: inherit;
-      }
-      .grid-button-wrapper .mode-chip {
-        border-color: var(--border-dark);
-        background-color: rgba(255,255,255,0.05);
-      }
-      .grid-button-wrapper .mode-chip.mode-dynamic {
-        border-color: rgba(255,200,0,0.5);
-        background-color: rgba(255,200,0,0.08);
-      }
-      .mode-toggle.mode-copy {
-        border-color: var(--border-dark);
-      }
-      .mode-toggle.mode-dynamic {
-        border-color: rgba(255,200,0,0.6);
-      }
-      .collapse-toggle {
-        border-color: var(--border-dark);
-        background-color: rgba(255,255,255,0.07);
-      }
-      .collapse-toggle:hover {
-        background-color: rgba(255,255,255,0.16);
-      }
-    }
   </style>
 </head>
 <body>
@@ -964,8 +966,9 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
         <button class="toggle-btn" id="posBotBtn">Bottom</button>
         <label style="margin-left: 0.25rem;">Run:</label>
         <button class="toggle-btn active" id="modeEnterAllBtn">Copy + Enter</button>
-        <button class="toggle-btn" id="modeCopyAllBtn">Copy only</button>
-        <button class="toggle-btn" id="modeDynamicAllBtn">Dynamic input</button>
+        <button class="toggle-btn" id="modeClipboardAllBtn">Copy only to clipboard</button>
+        <button class="toggle-btn" id="modeTerminalAllBtn">Copy only to terminal</button>
+        <button class="toggle-btn" id="modeDynamicAllBtn">Dynamic Input</button>
       </div>
       <div id="commandsGrid" class="commands-grid cols-2">
         <div class="grid-empty">No commands yet</div>
@@ -1001,7 +1004,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           <button id="addBtn">Add</button>
         </div>
         <div class="note">
-          Label is optional. Use the run-mode toggles to switch between "Copy + Enter", "Copy only", or "Dynamic input" (commands containing <code>\${input}</code> will prompt for a value).
+          Label is optional. Use the run-mode toggles to switch between "Copy + Enter", "Copy only to clipboard", "Copy only to terminal", or "Dynamic Input" (commands containing <code>\${input}</code> will prompt for a value).
         </div>
       </div>
     </div>
@@ -1028,13 +1031,14 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     const posTopBtn = document.getElementById('posTopBtn');
     const posBotBtn = document.getElementById('posBotBtn');
     const modeEnterAllBtn = document.getElementById('modeEnterAllBtn');
-    const modeCopyAllBtn = document.getElementById('modeCopyAllBtn');
+    const modeClipboardAllBtn = document.getElementById('modeClipboardAllBtn');
+    const modeTerminalAllBtn = document.getElementById('modeTerminalAllBtn');
     const modeDynamicAllBtn = document.getElementById('modeDynamicAllBtn');
     const collapseToggle = document.getElementById('collapseToggle');
 
     let presetLibrary = normalizePresetsForView(${JSON.stringify(this._presets)});
     const PLACEHOLDER_TOKEN = '\${input}';
-    const MODE_SEQUENCE = ['enter', 'copy', 'dynamic'];
+    const MODE_SEQUENCE = ['enter', 'clipboard', 'terminal', 'dynamic'];
 
     let viewState = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
     const cachedCommands = Array.isArray(viewState.commands) ? viewState.commands : [];
@@ -1100,15 +1104,28 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       persistViewState({ collapsed });
     }
 
+    function normalizeRunMode(runMode, addNewLine) {
+      if (MODE_SEQUENCE.includes(runMode)) {
+        return runMode;
+      }
+      if (runMode === 'copy') {
+        return 'clipboard';
+      }
+      if (addNewLine === false) {
+        return 'clipboard';
+      }
+      return 'enter';
+    }
+
+    function shouldSendEnter(runMode) {
+      return runMode === 'enter' || runMode === 'dynamic';
+    }
+
     function getRunMode(cmd) {
       if (!cmd) {
         return 'enter';
       }
-      const mode = cmd.runMode;
-      if (mode && MODE_SEQUENCE.includes(mode)) {
-        return mode;
-      }
-      return cmd.addNewLine === false ? 'copy' : 'enter';
+      return normalizeRunMode(cmd.runMode, cmd.addNewLine);
     }
 
     function normalizeCommandsForView(list) {
@@ -1120,7 +1137,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
         return {
           ...cmd,
           runMode,
-          addNewLine: runMode !== 'copy',
+          addNewLine: shouldSendEnter(runMode),
           inputValue: cmd.inputValue ?? ''
         };
       });
@@ -1144,11 +1161,14 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     }
 
     function getModeLabel(runMode) {
-      if (runMode === 'copy') {
-        return 'Copy only';
+      if (runMode === 'clipboard') {
+        return 'Copy only to clipboard';
+      }
+      if (runMode === 'terminal') {
+        return 'Copy only to terminal';
       }
       if (runMode === 'dynamic') {
-        return 'Dynamic input';
+        return 'Dynamic Input';
       }
       return 'Copy + Enter';
     }
@@ -1162,10 +1182,6 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       return cmd.text;
     }
 
-    function shouldSendEnter(cmd) {
-      return getRunMode(cmd) !== 'copy';
-    }
-
     function getNextMode(current) {
       const index = MODE_SEQUENCE.indexOf(current);
       if (index === -1 || index === MODE_SEQUENCE.length - 1) {
@@ -1176,7 +1192,9 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
 
     function setCommandMode(commandId, runMode) {
       commands = commands.map((cmd) =>
-        cmd.id === commandId ? { ...cmd, runMode, addNewLine: runMode !== 'copy' } : cmd
+        cmd.id === commandId
+          ? { ...cmd, runMode, addNewLine: shouldSendEnter(runMode) }
+          : cmd
       );
       updateGlobalModeFromCommands();
       renderGrid();
@@ -1192,7 +1210,8 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
 
     function updateModeButtons() {
       modeEnterAllBtn?.classList.toggle('active', globalRunMode === 'enter');
-      modeCopyAllBtn?.classList.toggle('active', globalRunMode === 'copy');
+      modeClipboardAllBtn?.classList.toggle('active', globalRunMode === 'clipboard');
+      modeTerminalAllBtn?.classList.toggle('active', globalRunMode === 'terminal');
       modeDynamicAllBtn?.classList.toggle('active', globalRunMode === 'dynamic');
     }
 
@@ -1267,7 +1286,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           vscode.postMessage({
             type: 'runCommand',
             text: resolveCommandText(cmd),
-            addNewLine: shouldSendEnter(cmd)
+            runMode
           });
         });
         btn.addEventListener('dragstart', handleDragStart);
@@ -1320,7 +1339,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           vscode.postMessage({
             type: 'runCommand',
             text: resolveCommandText(cmd),
-            addNewLine: shouldSendEnter(cmd)
+            runMode
           });
         });
 
@@ -1399,7 +1418,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       commands = commands.map((cmd) => ({
         ...cmd,
         runMode,
-        addNewLine: runMode !== 'copy'
+        addNewLine: shouldSendEnter(runMode)
       }));
       renderGrid();
       renderCommands();
@@ -1558,7 +1577,8 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     posTopBtn.addEventListener('click', () => setGridPosition('top'));
     posBotBtn.addEventListener('click', () => setGridPosition('bottom'));
     modeEnterAllBtn.addEventListener('click', () => toggleAllModes('enter'));
-    modeCopyAllBtn.addEventListener('click', () => toggleAllModes('copy'));
+    modeClipboardAllBtn.addEventListener('click', () => toggleAllModes('clipboard'));
+    modeTerminalAllBtn.addEventListener('click', () => toggleAllModes('terminal'));
     modeDynamicAllBtn.addEventListener('click', () => toggleAllModes('dynamic'));
 
     presetAddBtn.addEventListener('click', () => {

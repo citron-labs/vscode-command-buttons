@@ -2,6 +2,15 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
+## [0.2.5] - 2025-12-28
+
+### Added
+- Separate run modes for copying only to the clipboard or only to the terminal.
+- Collapsing the list now hides the per-command run-mode chips under the grid.
+
+### Fixed
+- Webview colors now follow the active VS Code theme.
+
 ## [0.2.3] - 2025-12-26
 
 ### Fixed

@@ -1,18 +1,45 @@
 # Command Buttons Panel
 
-Run your go-to terminal commands from a draggable grid in the Explorer. Add buttons once, pick how they run (copy + enter, copy only, or dynamic input), and reuse a dedicated terminal.
+## Table of Contents
+- [Features](#features)
+- [Preview](#preview)
+- [Usage](#usage)
+  - [Dynamic Input](#dynamic-input)
+  - [Predefined variables](#predefined-variables)
+  - [Presets](#presets)
+- [Visual guide](#visual-guide)
+  - [Adding commands from presets](#adding-commands-from-presets)
+  - [Adding a custom command with a custom label](#adding-a-custom-command-with-a-custom-label)
+  - [Display options](#display-options)
+  - [Show or hide commands](#show-or-hide-commands)
+- [Development](#development)
+- [Packaging & Publishing](#packaging--publishing)
+- [Release Notes](#release-notes)
+- [License](#license)
+
+Run your go-to terminal commands from a draggable grid in the Explorer. Add buttons once, pick how they run (Copy + Enter, Copy only to clipboard, Copy only to terminal, or Dynamic Input), and reuse a dedicated terminal.
 
 ## Features
 - Explorer side panel with grid and list views; collapse the list to focus on the grid.
 - Drag to reorder commands and pick 1-4 grid columns.
-- Three run modes: Copy + Enter (default), Copy only, and Dynamic input using a `${input}` placeholder with synced values across the UI.
+- Four run modes: Copy + Enter (default), Copy only to clipboard, Copy only to terminal, and Dynamic Input using a `${input}` placeholder with synced values across the UI.
 - Dedicated terminal named **Command Buttons** that is created once and reused.
 - Preset library for common npm/git/docker commands; add your own in seconds.
 - Commands persist per workspace when one is open, otherwise globally; Settings Sync can keep them in sync.
 
 ## Preview
-![Command grid preview showing draggable buttons and run modes](images/preview-grid.png)
-![Compact list view with presets and dynamic input fields](images/preview-compact.png)
+<table>
+  <tr>
+    <td>
+    <p id="preview-grid">Grid Layout</p>
+    <img src="images/preview-grid.png" alt="Command grid preview showing draggable buttons and run modes" width="100%" />
+    </td>
+    <td>
+    <p id="preview-compact">Compact List Layout</p>
+    <img src="images/preview-compact.png" alt="Compact list view with presets and dynamic input fields" width="100%" />
+    </td>
+  </tr>
+</table>
 
 ## Usage
 1. Open the Explorer view and find **Command Buttons**.
@@ -21,12 +48,17 @@ Run your go-to terminal commands from a draggable grid in the Explorer. Add butt
 4. Drag buttons in the grid to reorder; change the grid column count with the toolbar toggles.
 5. Click any button to run it; the extension opens/reuses the **Command Buttons** terminal.
 
-### Dynamic input
+### Dynamic Input
 - Insert `${input}` anywhere in the command text.
 - Enter the value in the per-command input; it stays synced between the grid and list.
-- When run mode is **Dynamic input**, the placeholder is replaced before sending to the terminal.
+- When run mode is **Dynamic Input**, the placeholder is replaced before sending to the terminal.
 
 ### Predefined variables
+
+<details>
+
+<summary>Expand full list of placeholders</summary>
+
 Use these placeholders in commands (they mirror VS Code task variables):
 - `${file}`: active file path.
 - `${fileBasename}`: active file basename.
@@ -58,30 +90,39 @@ Use these placeholders in commands (they mirror VS Code task variables):
 - `${input}`: prompt for a value as a parameter.
 - `${input:defaultValue}`: prompt for a value with a default.
 
+</details>
+
 ### Presets
 - Use the preset dropdown to add a command from the built-in library (npm dev/build/test, git status, docker compose up).
 - Edit or delete presets after adding them like any other command.
 
-## Visual guide
-### Adding commands from presets
-![GIF showing how to add a preset command via the dropdown](instructions/AddingCommandsfromPresets.gif)
-Use the preset picker illustrated above to add common commands with one click.
-
-### Adding a custom command with a custom label
-![GIF demonstrating entering a custom command and label](instructions/addingCustomCommandwithCustomLabel.gif)
-Create your own commands, give them descriptive labels, and reorder them immediately after adding.
-
-### Display options
-![GIF showing toggles for different grid/list layouts](instructions/displayOptions.gif)
-Switch between grid/list layouts, collapse the list, and pick 1–4 columns so your preferred layout stays front and center.
-
-### Show or hide commands
-![GIF of hiding and showing commands from the list](instructions/showHideCommands.gif)
-Toggle visibility on commands you only need sometimes so the panel stays focused on what matters.
-
-## Development
-- `npm install`
-- `npm run watch` to build on save, or `npm run compile` for a one-off build.
+## Visual guide<table>
+  <tr>
+    <td>
+      <h6 id="adding-commands-from-presets">Add CMD from preset</h6>
+        <img src="instructions/AddingCommandsfromPresets.gif" alt="GIF showing how to add a preset command via the dropdown" width="100%" />
+        <h6>Use the preset picker illustrated above to add common commands with one click.</h6>
+    </td>
+    <td>
+      <h6 id="adding-a-custom-command-with-a-custom-label">Add CMD W/ custom label</h6>
+        <img src="instructions/addingCustomCommandwithCustomLabel.gif" alt="GIF demonstrating entering a custom command and label" width="100%" />
+        <h6>Create your own commands, give them descriptive labels, and reorder them immediately after adding.</h6>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <h6 id="display-options">Display options</h6>
+        <img src="instructions/displayOptions.gif" alt="GIF showing toggles for different grid/list layouts" width="100%" />
+        <h6>Switch between grid/list layouts, collapse the list, and pick 1-4 columns so your preferred layout stays front and center.</h6>
+    </td>
+    <td>
+      <h6 id="show-or-hide-commands">Show or hide commands</h6>
+        <img src="instructions/showHideCommands.gif" alt="GIF of hiding and showing commands from the list" width="100%" />
+        <h6>Toggle visibility on commands you only need sometimes so the panel stays focused on what matters.</h6>
+    </td>
+  </tr>
+</table>
+f build.
 - Press **F5** in VS Code to launch an Extension Development Host and open the **Command Buttons** view.
 
 ## Packaging & Publishing
@@ -90,6 +131,11 @@ Toggle visibility on commands you only need sometimes so the panel stays focused
 - `.vscodeignore` excludes source and packaged `.vsix` files from the extension bundle.
 
 ## Release Notes
+### 0.2.5
+- Added separate run modes for copying only to the clipboard or only to the terminal.
+- Collapsing the list now hides the per-command run-mode chips under the grid.
+- Webview colors now follow the active VS Code theme.
+
 ### 0.2.3
 - Copy-only mode now copies the command to the clipboard and shows a confirmation message.
 
@@ -119,3 +165,20 @@ Toggle visibility on commands you only need sometimes so the panel stays focused
 
 ## License
 [MIT](LICENSE)
+
+## Table of Contents
+- [Features](#features)
+- [Preview](#preview)
+- [Usage](#usage)
+  - [Dynamic Input](#dynamic-input)
+  - [Predefined variables](#predefined-variables)
+  - [Presets](#presets)
+- [Visual guide](#visual-guide)
+  - [Adding commands from presets](#adding-commands-from-presets)
+  - [Adding a custom command with a custom label](#adding-a-custom-command-with-a-custom-label)
+  - [Display options](#display-options)
+  - [Show or hide commands](#show-or-hide-commands)
+- [Development](#development)
+- [Packaging & Publishing](#packaging--publishing)
+- [Release Notes](#release-notes)
+- [License](#license)
