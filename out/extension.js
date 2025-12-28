@@ -74,7 +74,7 @@ class CommandButtonsViewProvider {
                     break;
                 }
                 case 'runCommand': {
-                    this.runCommand(message.text, message.addNewLine !== false);
+                    await this.runCommand(message.text, message.addNewLine !== false);
                     break;
                 }
                 case 'reorderCommands': {
@@ -302,9 +302,18 @@ class CommandButtonsViewProvider {
         this._terminal.show(true);
         return this._terminal;
     }
-    runCommand(text, addNewLine = true) {
+    async runCommand(text, addNewLine = true) {
         const terminal = this.ensureTerminal();
         terminal.sendText(text, addNewLine); // true -> add newline (ENTER)
+        if (!addNewLine) {
+            try {
+                await vscode.env.clipboard.writeText(text);
+                vscode.window.showInformationMessage('Copied to Clipboard');
+            }
+            catch {
+                vscode.window.showErrorMessage('Failed to copy to clipboard.');
+            }
+        }
     }
     // --- Webview HTML -------------------------------------------------------
     getHtmlForWebview(webview) {

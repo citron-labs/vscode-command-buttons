@@ -90,6 +90,9 @@ Toggle visibility on commands you only need sometimes so the panel stays focused
 - `.vscodeignore` excludes source and packaged `.vsix` files from the extension bundle.
 
 ## Release Notes
+### 0.2.3
+- Copy-only mode now copies the command to the clipboard and shows a confirmation message.
+
 ### 0.2.2
 - Added visual guide GIFs for presets, custom commands, layout toggles, and show/hide controls to the README.
 

@@ -2,6 +2,11 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
+## [0.2.3] - 2025-12-26
+
+### Fixed
+- Copy-only mode now copies the command to the clipboard and shows a confirmation message.
+
 ## [0.2.2] - 2025-12-23
 
 ### Added

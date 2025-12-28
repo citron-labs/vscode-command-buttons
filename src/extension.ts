@@ -110,7 +110,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'runCommand': {
-          this.runCommand(message.text, message.addNewLine !== false);
+          await this.runCommand(message.text, message.addNewLine !== false);
           break;
         }
         case 'reorderCommands': {
@@ -387,9 +387,17 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     return this._terminal;
   }
 
-  private runCommand(text: string, addNewLine: boolean = true) {
+  private async runCommand(text: string, addNewLine: boolean = true) {
     const terminal = this.ensureTerminal();
     terminal.sendText(text, addNewLine); // true -> add newline (ENTER)
+    if (!addNewLine) {
+      try {
+        await vscode.env.clipboard.writeText(text);
+        vscode.window.showInformationMessage('Copied to Clipboard');
+      } catch {
+        vscode.window.showErrorMessage('Failed to copy to clipboard.');
+      }
+    }
   }
 
   // --- Webview HTML -------------------------------------------------------
