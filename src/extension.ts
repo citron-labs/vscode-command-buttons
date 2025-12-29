@@ -18,6 +18,25 @@ type PresetItem = {
   text: string;
 };
 
+type AccentColorOption =
+  | 'red'
+  | 'pink'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'blue'
+  | 'purple'
+  | 'grey'
+  | 'white'
+  | 'black';
+
+type AccentColors = {
+  accent: string;
+  accentHover: string;
+  accentFg: string;
+};
+
+const CONFIG_SECTION = 'commandButtons';
 const STORAGE_KEY = 'commandButtons.commands';
 const PRESET_STORAGE_KEY = 'commandButtons.presets';
 const PRESET_DEFAULTS: PresetItem[] = [
@@ -27,6 +46,18 @@ const PRESET_DEFAULTS: PresetItem[] = [
   { id: 'preset-git-status', label: 'git status', text: 'git status' },
   { id: 'preset-dc-up', label: 'docker compose up', text: 'docker compose up' }
 ];
+const ACCENT_COLORS: Record<AccentColorOption, AccentColors> = {
+  red: { accent: '#e53935', accentHover: '#d32f2f', accentFg: '#ffffff' },
+  pink: { accent: '#d81b60', accentHover: '#c2185b', accentFg: '#ffffff' },
+  orange: { accent: '#fb8c00', accentHover: '#f57c00', accentFg: '#ffffff' },
+  yellow: { accent: '#fbc02d', accentHover: '#f9a825', accentFg: '#1f1f1f' },
+  green: { accent: '#4caf50', accentHover: '#43a047', accentFg: '#ffffff' },
+  blue: { accent: '#1e88e5', accentHover: '#1976d2', accentFg: '#ffffff' },
+  purple: { accent: '#8e24aa', accentHover: '#7b1fa2', accentFg: '#ffffff' },
+  grey: { accent: '#9e9e9e', accentHover: '#8e8e8e', accentFg: '#111111' },
+  white: { accent: '#ffffff', accentHover: '#f2f2f2', accentFg: '#111111' },
+  black: { accent: '#111111', accentHover: '#000000', accentFg: '#ffffff' }
+};
 
 export function activate(context: vscode.ExtensionContext) {
   // Optional: allow Settings Sync to sync global commands/presets between machines
@@ -60,6 +91,13 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
   constructor(private readonly context: vscode.ExtensionContext) {
     this._commands = this.loadCommands();
     this._presets = this.loadPresets();
+    this.context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration(`${CONFIG_SECTION}.accentColor`)) {
+          this.postAccentColors();
+        }
+      })
+    );
   }
 
   public resolveWebviewView(
@@ -92,6 +130,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           }
           this._presets = this.loadPresets();
           this.postPresets();
+          this.postAccentColors();
           break;
         }
         case 'addCommand': {
@@ -259,6 +298,19 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     this._view?.webview.postMessage({
       type: 'setPresets',
       presets: this._presets
+    });
+  }
+
+  private getAccentColors(): AccentColors {
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    const selected = config.get<AccentColorOption>('accentColor', 'green');
+    return ACCENT_COLORS[selected] ?? ACCENT_COLORS.green;
+  }
+
+  private postAccentColors() {
+    this._view?.webview.postMessage({
+      type: 'setAccent',
+      accent: this.getAccentColors()
     });
   }
 
@@ -442,6 +494,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
   private getHtmlForWebview(webview: vscode.Webview): string {
     const nonce = getNonce();
     const cspSource = webview.cspSource;
+    const accent = this.getAccentColors();
 
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -460,9 +513,9 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       --fg: var(--vscode-sideBar-foreground, var(--vscode-foreground));
       --surface: var(--vscode-editorWidget-background);
       --border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(0,0,0,0.2)));
-      --accent: var(--vscode-button-background, #4caf50);
-      --accent-hover: var(--vscode-button-hoverBackground, #43a047);
-      --accent-fg: var(--vscode-button-foreground, #ffffff);
+      --accent: ${accent.accent};
+      --accent-hover: ${accent.accentHover};
+      --accent-fg: ${accent.accentFg};
       --secondary-bg: var(--vscode-button-secondaryBackground, rgba(0,0,0,0.15));
       --secondary-hover: var(--vscode-button-secondaryHoverBackground, rgba(0,0,0,0.25));
       --secondary-fg: var(--vscode-button-secondaryForeground, var(--fg));
@@ -1039,6 +1092,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     let presetLibrary = normalizePresetsForView(${JSON.stringify(this._presets)});
     const PLACEHOLDER_TOKEN = '\${input}';
     const MODE_SEQUENCE = ['enter', 'clipboard', 'terminal', 'dynamic'];
+    const initialAccent = ${JSON.stringify(accent)};
 
     let viewState = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
     const cachedCommands = Array.isArray(viewState.commands) ? viewState.commands : [];
@@ -1064,6 +1118,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     setCollapsed(isCollapsed);
     setGridColumns(gridColumns);
     setGridPosition(gridPosition);
+    applyAccentColors(initialAccent);
     if (commands.length) {
       updateGlobalModeFromCommands();
       renderCommands();
@@ -1082,6 +1137,22 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       }
       viewState = { ...viewState, ...partial };
       vscode.setState(viewState);
+    }
+
+    function applyAccentColors(accentColors) {
+      if (!accentColors || typeof accentColors !== 'object') {
+        return;
+      }
+      const root = document.documentElement;
+      if (accentColors.accent) {
+        root.style.setProperty('--accent', accentColors.accent);
+      }
+      if (accentColors.accentHover) {
+        root.style.setProperty('--accent-hover', accentColors.accentHover);
+      }
+      if (accentColors.accentFg) {
+        root.style.setProperty('--accent-fg', accentColors.accentFg);
+      }
     }
 
     function setCollapsed(collapsed) {
@@ -1634,6 +1705,10 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
           presetLibrary = normalizePresetsForView(message.presets);
           persistViewState({ presets: presetLibrary });
           populatePresetDropdown();
+          break;
+        }
+        case 'setAccent': {
+          applyAccentColors(message.accent);
           break;
         }
       }

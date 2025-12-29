@@ -51,6 +51,28 @@
           "icon": "images/command-buttons-icon.png"
         }
       ]
+    },
+    "configuration": {
+      "title": "Command Buttons Panel",
+      "properties": {
+        "commandButtons.accentColor": {
+          "type": "string",
+          "default": "green",
+          "enum": [
+            "red",
+            "pink",
+            "orange",
+            "yellow",
+            "green",
+            "blue",
+            "purple",
+            "grey",
+            "white",
+            "black"
+          ],
+          "description": "Sets the accent/button color used by the Command Buttons panel."
+        }
+      }
     }
   },
   "scripts": {

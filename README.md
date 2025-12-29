@@ -7,6 +7,7 @@
   - [Dynamic Input](#dynamic-input)
   - [Predefined variables](#predefined-variables)
   - [Presets](#presets)
+  - [Appearance](#appearance)
 - [Visual guide](#visual-guide)
   - [Adding commands from presets](#adding-commands-from-presets)
   - [Adding a custom command with a custom label](#adding-a-custom-command-with-a-custom-label)
@@ -26,6 +27,7 @@ Run your go-to terminal commands from a draggable grid in the Explorer. Add butt
 - Dedicated terminal named **Command Buttons** that is created once and reused.
 - Preset library for common npm/git/docker commands; add your own in seconds.
 - Commands persist per workspace when one is open, otherwise globally; Settings Sync can keep them in sync.
+- Accent/button color can be customized via the `commandButtons.accentColor` setting.
 
 ## Preview
 <table>
@@ -96,44 +98,51 @@ Use these placeholders in commands (they mirror VS Code task variables):
 - Use the preset dropdown to add a command from the built-in library (npm dev/build/test, git status, docker compose up).
 - Edit or delete presets after adding them like any other command.
 
-## Visual guide<table>
+### Appearance
+- `commandButtons.accentColor` sets the accent/button color for the panel.
+- Options: `red`, `pink`, `orange`, `yellow`, `green` (default), `blue`, `purple`, `grey`, `white`, `black`.
+- You can change it in Settings by searching for `Command Buttons: Accent Color`.
+
+Example `settings.json`:
+```json
+{
+  "commandButtons.accentColor": "blue"
+}
+```
+
+## Visual guide
+<table>
   <tr>
     <td>
-      <h6 id="adding-commands-from-presets">Add CMD from preset</h6>
+      <h4 id="adding-commands-from-presets">Add CMD from preset</h4>
         <img src="instructions/AddingCommandsfromPresets.gif" alt="GIF showing how to add a preset command via the dropdown" width="100%" />
-        <h6>Use the preset picker illustrated above to add common commands with one click.</h6>
+        <p>Use the preset picker illustrated above to add common commands with one click.</p>
     </td>
     <td>
-      <h6 id="adding-a-custom-command-with-a-custom-label">Add CMD W/ custom label</h6>
+      <h4 id="adding-a-custom-command-with-a-custom-label">Add CMD W/ custom label</h4>
         <img src="instructions/addingCustomCommandwithCustomLabel.gif" alt="GIF demonstrating entering a custom command and label" width="100%" />
-        <h6>Create your own commands, give them descriptive labels, and reorder them immediately after adding.</h6>
+        <p>Create your own commands, give them descriptive labels, and reorder them immediately after adding.</p>
     </td>
   </tr>
   <tr>
     <td>
-      <h6 id="display-options">Display options</h6>
+      <h4 id="display-options">Display options</h4>
         <img src="instructions/displayOptions.gif" alt="GIF showing toggles for different grid/list layouts" width="100%" />
-        <h6>Switch between grid/list layouts, collapse the list, and pick 1-4 columns so your preferred layout stays front and center.</h6>
+        <p>Switch between grid/list layouts, collapse the list, and pick 1-4 columns so your preferred layout stays front and center.</p>
     </td>
     <td>
-      <h6 id="show-or-hide-commands">Show or hide commands</h6>
+      <h4 id="show-or-hide-commands">Show or hide commands</h4>
         <img src="instructions/showHideCommands.gif" alt="GIF of hiding and showing commands from the list" width="100%" />
-        <h6>Toggle visibility on commands you only need sometimes so the panel stays focused on what matters.</h6>
+        <p>Toggle visibility on commands you only need sometimes so the panel stays focused on what matters.</p>
     </td>
   </tr>
 </table>
-f build.
-- Press **F5** in VS Code to launch an Extension Development Host and open the **Command Buttons** view.
-
-## Packaging & Publishing
-- `npm run package` builds `command-buttons-panel-x.y.z.vsix`.
-- `npm run publish` publishes via `vsce`; set `VSCE_PAT` to your Marketplace token first.
-- `.vscodeignore` excludes source and packaged `.vsix` files from the extension bundle.
 
 ## Release Notes
 ### 0.2.5
 - Added separate run modes for copying only to the clipboard or only to the terminal.
 - Collapsing the list now hides the per-command run-mode chips under the grid.
+- Added an accent color setting to customize the button theme.
 - Webview colors now follow the active VS Code theme.
 
 ### 0.2.3
@@ -173,6 +182,7 @@ f build.
   - [Dynamic Input](#dynamic-input)
   - [Predefined variables](#predefined-variables)
   - [Presets](#presets)
+  - [Appearance](#appearance)
 - [Visual guide](#visual-guide)
   - [Adding commands from presets](#adding-commands-from-presets)
   - [Adding a custom command with a custom label](#adding-a-custom-command-with-a-custom-label)
