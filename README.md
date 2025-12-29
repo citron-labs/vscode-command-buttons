@@ -139,6 +139,9 @@ Example `settings.json`:
 </table>
 
 ## Release Notes
+### 0.2.7
+- Added an autocomplete dropdown for placeholder variables when typing `$` in the command input.
+
 ### 0.2.5
 - Added separate run modes for copying only to the clipboard or only to the terminal.
 - Collapsing the list now hides the per-command run-mode chips under the grid.

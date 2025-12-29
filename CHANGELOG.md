@@ -2,6 +2,11 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
+## [0.2.7] - 2025-12-28
+
+### Added
+- Autocomplete dropdown for command placeholders when typing `$` in the command input.
+
 ## [0.2.5] - 2025-12-28
 
 ### Added
