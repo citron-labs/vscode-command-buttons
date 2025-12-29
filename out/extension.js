@@ -781,6 +781,64 @@ class CommandButtonsViewProvider {
       border-color: var(--focus);
     }
 
+    .autocomplete {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .autocomplete input[type="text"] {
+      width: 100%;
+    }
+
+    .autocomplete-menu {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 2px);
+      background-color: var(--dropdown-bg);
+      color: var(--dropdown-fg);
+      border: 1px solid var(--dropdown-border);
+      border-radius: 4px;
+      padding: 0.15rem;
+      display: none;
+      z-index: 20;
+      max-height: 11rem;
+      overflow-y: auto;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+    }
+
+    .autocomplete-menu.visible {
+      display: block;
+    }
+
+    .autocomplete-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.05rem;
+      padding: 0.25rem 0.35rem;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .autocomplete-item:hover {
+      background-color: var(--secondary-hover);
+    }
+
+    .autocomplete-item.active {
+      background-color: var(--secondary-bg);
+    }
+
+    .autocomplete-item .token {
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .autocomplete-item .desc {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
     button {
       border-radius: 4px;
       border: none;
@@ -928,11 +986,18 @@ class CommandButtonsViewProvider {
           />
         </div>
         <div class="add-row">
-          <input
-            id="commandInput"
-            type="text"
-            placeholder="Command (e.g. npm run build)"
-          />
+          <div class="autocomplete" id="commandAutocomplete">
+            <input
+              id="commandInput"
+              type="text"
+              placeholder="Command (e.g. npm run build)"
+            />
+            <div
+              id="commandSuggestions"
+              class="autocomplete-menu"
+              role="listbox"
+            ></div>
+          </div>
           <button id="addBtn">Add</button>
         </div>
         <div class="note">
@@ -947,6 +1012,8 @@ class CommandButtonsViewProvider {
 
     const labelInput = document.getElementById('labelInput');
     const commandInput = document.getElementById('commandInput');
+    const commandAutocomplete = document.getElementById('commandAutocomplete');
+    const commandSuggestions = document.getElementById('commandSuggestions');
     const addBtn = document.getElementById('addBtn');
     const commandsList = document.getElementById('commandsList');
     const commandsGrid = document.getElementById('commandsGrid');
@@ -970,6 +1037,87 @@ class CommandButtonsViewProvider {
 
     let presetLibrary = normalizePresetsForView(${JSON.stringify(this._presets)});
     const PLACEHOLDER_TOKEN = '\${input}';
+    const COMMAND_PLACEHOLDERS = [
+      { token: '\${file}', description: 'active file path.' },
+      { token: '\${fileBasename}', description: 'active file basename.' },
+      {
+        token: '\${fileBasenameNoExtension}',
+        description: 'active file basename with no extension.'
+      },
+      { token: '\${fileDirname}', description: 'active file directory name.' },
+      { token: '\${fileExtname}', description: 'active file extension.' },
+      { token: '\${lineNumber}', description: 'first selected line number.' },
+      {
+        token: '\${lineNumbers}',
+        description: 'all selected line numbers, e.g. 41,46,80.'
+      },
+      { token: '\${columnNumber}', description: 'first selected column number.' },
+      {
+        token: '\${columnNumbers}',
+        description: 'all selected column numbers, e.g. 41,46,80.'
+      },
+      {
+        token: '\${selectedFile}',
+        description: 'first selected file or folder from the context menu.'
+      },
+      {
+        token: '\${selectedFiles}',
+        description:
+          'selected file or folder list from the context menu or config, e.g. "path/to/file1" "path/to/file2".'
+      },
+      { token: '\${selectedText}', description: 'first selected text.' },
+      {
+        token: '\${selectedTextList}',
+        description: 'all selected text, e.g. sl1 sl2.'
+      },
+      {
+        token: '\${selectedTextSection}',
+        description: 'all selected text sections, e.g. sl1\\nsl2.'
+      },
+      {
+        token: '\${selectedPosition}',
+        description: 'selected position, e.g. 21,6.'
+      },
+      {
+        token: '\${selectedPositionList}',
+        description: 'all selected positions, e.g. 45,6 80,18 82,5.'
+      },
+      {
+        token: '\${selectedLocation}',
+        description: 'first selected location, e.g. 21,6,21,10.'
+      },
+      {
+        token: '\${selectedLocationList}',
+        description:
+          'all selected locations, e.g. 21,6,21,10 22,6,22,10 23,6,23,10.'
+      },
+      { token: '\${relativeFile}', description: 'active file relative path.' },
+      {
+        token: '\${workspaceFolder}',
+        description: 'active workspace folder path.'
+      },
+      {
+        token: '\${workspaceFolderBasename}',
+        description: 'active workspace folder basename.'
+      },
+      { token: '\${homedir}', description: 'home directory of the current user.' },
+      { token: '\${tmpdir}', description: 'default directory for temporary files.' },
+      { token: '\${platform}', description: 'OS platform.' },
+      { token: '\${env:PATH}', description: 'value of the PATH environment variable.' },
+      {
+        token: '\${config:editor.fontSize}',
+        description: 'VS Code setting value.'
+      },
+      {
+        token: '\${command:workbench.action.terminal.clear}',
+        description: 'run a VS Code command.'
+      },
+      { token: '\${input}', description: 'prompt for a value as a parameter.' },
+      {
+        token: '\${input:defaultValue}',
+        description: 'prompt for a value with a default.'
+      }
+    ];
     const MODE_SEQUENCE = ['enter', 'clipboard', 'terminal', 'dynamic'];
     const initialAccent = ${JSON.stringify(accent)};
 
@@ -988,6 +1136,9 @@ class CommandButtonsViewProvider {
     let dragIndex = null;
     let globalRunMode = 'enter';
     let isCollapsed = Boolean(viewState.collapsed);
+    let commandSuggestionItems = [];
+    let activeCommandSuggestion = -1;
+    let commandSuggestionTrigger = null;
 
     if (cachedPresets.length) {
       presetLibrary = normalizePresetsForView(cachedPresets);
@@ -1339,6 +1490,176 @@ class CommandButtonsViewProvider {
       }
     }
 
+    function getCommandTrigger(value, cursorPos) {
+      if (typeof cursorPos !== 'number') {
+        return null;
+      }
+      const beforeCursor = value.slice(0, cursorPos);
+      const dollarIndex = beforeCursor.lastIndexOf('$');
+      if (dollarIndex === -1) {
+        return null;
+      }
+      const token = beforeCursor.slice(dollarIndex + 1);
+      if (token.includes(' ') || token.includes('\t') || token.includes('}')) {
+        return null;
+      }
+      const query = token.startsWith('{') ? token.slice(1) : token;
+      return { start: dollarIndex, end: cursorPos, query };
+    }
+
+    function getMatchingCommandPlaceholders(query) {
+      if (!query) {
+        return COMMAND_PLACEHOLDERS;
+      }
+      const normalized = query.toLowerCase();
+      return COMMAND_PLACEHOLDERS.filter((item) => {
+        const token = item.token.toLowerCase();
+        const desc = item.description.toLowerCase();
+        return token.includes(normalized) || desc.includes(normalized);
+      });
+    }
+
+    function hideCommandSuggestions() {
+      if (!commandSuggestions) {
+        return;
+      }
+      commandSuggestions.classList.remove('visible');
+      commandSuggestions.innerHTML = '';
+      commandSuggestionItems = [];
+      activeCommandSuggestion = -1;
+      commandSuggestionTrigger = null;
+    }
+
+    function setActiveCommandSuggestion(index) {
+      if (!commandSuggestions) {
+        return;
+      }
+      const items = commandSuggestions.querySelectorAll('.autocomplete-item');
+      items.forEach((item, itemIndex) => {
+        item.classList.toggle('active', itemIndex === index);
+      });
+      activeCommandSuggestion = index;
+    }
+
+    function insertCommandSuggestion(token) {
+      if (!commandSuggestionTrigger || !commandInput) {
+        return;
+      }
+      const value = commandInput.value;
+      const start = commandSuggestionTrigger.start;
+      const end =
+        typeof commandInput.selectionEnd === 'number'
+          ? commandInput.selectionEnd
+          : commandSuggestionTrigger.end;
+      const nextValue = value.slice(0, start) + token + value.slice(end);
+      commandInput.value = nextValue;
+      const cursor = start + token.length;
+      commandInput.setSelectionRange(cursor, cursor);
+      hideCommandSuggestions();
+      commandInput.focus();
+    }
+
+    function renderCommandSuggestions(items, trigger) {
+      if (!commandSuggestions) {
+        return;
+      }
+      commandSuggestions.innerHTML = '';
+      commandSuggestionItems = items;
+      commandSuggestionTrigger = trigger;
+
+      items.forEach((item, index) => {
+        const option = document.createElement('div');
+        option.className = 'autocomplete-item';
+        option.dataset.index = String(index);
+
+        const token = document.createElement('div');
+        token.className = 'token';
+        token.textContent = item.token;
+
+        const desc = document.createElement('div');
+        desc.className = 'desc';
+        desc.textContent = item.description;
+
+        option.appendChild(token);
+        option.appendChild(desc);
+
+        option.addEventListener('mouseenter', () => {
+          setActiveCommandSuggestion(index);
+        });
+        option.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+          insertCommandSuggestion(item.token);
+        });
+
+        commandSuggestions.appendChild(option);
+      });
+
+      commandSuggestions.classList.add('visible');
+      setActiveCommandSuggestion(0);
+    }
+
+    function updateCommandSuggestions() {
+      if (!commandInput || !commandSuggestions) {
+        return;
+      }
+      const cursorPos =
+        typeof commandInput.selectionStart === 'number'
+          ? commandInput.selectionStart
+          : commandInput.value.length;
+      const trigger = getCommandTrigger(commandInput.value, cursorPos);
+      if (!trigger) {
+        hideCommandSuggestions();
+        return;
+      }
+      const matches = getMatchingCommandPlaceholders(trigger.query);
+      if (!matches.length) {
+        hideCommandSuggestions();
+        return;
+      }
+      renderCommandSuggestions(matches, trigger);
+    }
+
+    function handleCommandInputKeydown(event) {
+      if (commandSuggestions?.classList.contains('visible')) {
+        if (!commandSuggestionItems.length) {
+          hideCommandSuggestions();
+          return;
+        }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          const nextIndex =
+            (activeCommandSuggestion + 1) % commandSuggestionItems.length;
+          setActiveCommandSuggestion(nextIndex);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          const nextIndex =
+            (activeCommandSuggestion - 1 + commandSuggestionItems.length) %
+            commandSuggestionItems.length;
+          setActiveCommandSuggestion(nextIndex);
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const activeItem = commandSuggestionItems[activeCommandSuggestion];
+          if (activeItem) {
+            insertCommandSuggestion(activeItem.token);
+          }
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          hideCommandSuggestions();
+          return;
+        }
+      }
+
+      if (event.key === 'Enter') {
+        addCommandFromInputs();
+      }
+    }
+
     function addCommandFromInputs() {
       const label = labelInput.value.trim();
       const text = commandInput.value.trim();
@@ -1348,6 +1669,7 @@ class CommandButtonsViewProvider {
       if (text) {
         labelInput.value = '';
         commandInput.value = '';
+        hideCommandSuggestions();
       }
     }
 
@@ -1400,6 +1722,7 @@ class CommandButtonsViewProvider {
       if (!preset) return;
       labelInput.value = preset.label || preset.text;
       commandInput.value = preset.text;
+      hideCommandSuggestions();
     }
 
     function addPresetFromInputs() {
@@ -1557,11 +1880,29 @@ class CommandButtonsViewProvider {
       addCommandFromInputs();
     });
 
-    commandInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        addCommandFromInputs();
-      }
+    commandInput.addEventListener('input', () => {
+      updateCommandSuggestions();
     });
+
+    commandInput.addEventListener('click', () => {
+      updateCommandSuggestions();
+    });
+
+    commandInput.addEventListener('focus', () => {
+      updateCommandSuggestions();
+    });
+
+    commandInput.addEventListener('keyup', (event) => {
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        return;
+      }
+      if (event.key === 'Enter') {
+        return;
+      }
+      updateCommandSuggestions();
+    });
+
+    commandInput.addEventListener('keydown', handleCommandInputKeydown);
 
     labelInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -1591,6 +1932,17 @@ class CommandButtonsViewProvider {
           break;
         }
       }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!commandAutocomplete) {
+        return;
+      }
+      const target = event.target;
+      if (target instanceof Node && commandAutocomplete.contains(target)) {
+        return;
+      }
+      hideCommandSuggestions();
     });
 
     vscode.postMessage({ type: 'ready', cachedCommands: commands });
