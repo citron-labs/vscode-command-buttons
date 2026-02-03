@@ -2,6 +2,16 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
+## [0.2.9] - 2026-01-27
+
+### Added
+- Duplicate "Visual guide" section at the top of the README for improved user visibility.
+
+## [0.2.8] - 2026-01-23
+
+### Added
+- Environment/language preset library sourced from `terminal-command-reference.json`.
+
 ## [0.2.7] - 2025-12-28
 
 ### Added

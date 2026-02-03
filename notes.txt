@@ -4,3 +4,9 @@ also these options should be updated to include this list of options:
 - Copy only to clipboard
 - Copy only to terminal
 - Dynamic Input
+
+implement support for multi line commands, so when user pastes a multi line command, each linebreak is preserved and the command is executed as intended.
+
+add to the Preset library more presets for common tasks.
+clean up Preset library UI to make it easier to navigate and find presets. search online for ui ideas for preset libraries.
+add a feature to allow users to create and save their own presets to the Preset library that is stored locally on their machine for all future projects.

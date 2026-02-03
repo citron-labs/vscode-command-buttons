@@ -3,13 +3,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
+const fs = require("fs");
+const path = require("path");
 const CONFIG_SECTION = 'commandButtons';
 const STORAGE_KEY = 'commandButtons.commands';
 const PRESET_STORAGE_KEY = 'commandButtons.presets';
+const PRESET_LIBRARY_FILE = 'terminal-command-reference.json';
 const PRESET_DEFAULTS = [
     { id: 'preset-npm-dev', label: 'npm dev', text: 'npm run dev' },
     { id: 'preset-npm-build', label: 'npm build', text: 'npm run build' },
     { id: 'preset-npm-test', label: 'npm test', text: 'npm test' },
+    {
+        id: 'preset-tsc-no-emit',
+        label: 'tsc no emit',
+        text: 'npx tsc --noEmit --pretty false'
+    },
     { id: 'preset-git-status', label: 'git status', text: 'git status' },
     { id: 'preset-dc-up', label: 'docker compose up', text: 'docker compose up' }
 ];
@@ -43,8 +51,13 @@ class CommandButtonsViewProvider {
         this.context = context;
         this._commands = [];
         this._presets = [];
+        this._presetLibrary = {
+            environments: [],
+            languages: []
+        };
         this._commands = this.loadCommands();
         this._presets = this.loadPresets();
+        this._presetLibrary = this.loadPresetLibrary();
         this.context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration(`${CONFIG_SECTION}.accentColor`)) {
                 this.postAccentColors();
@@ -73,6 +86,8 @@ class CommandButtonsViewProvider {
                     }
                     this._presets = this.loadPresets();
                     this.postPresets();
+                    this._presetLibrary = this.loadPresetLibrary();
+                    this.postPresetLibrary();
                     this.postAccentColors();
                     break;
                 }
@@ -219,6 +234,172 @@ class CommandButtonsViewProvider {
             type: 'setPresets',
             presets: this._presets
         });
+    }
+    postPresetLibrary() {
+        this._view?.webview.postMessage({
+            type: 'setPresetLibrary',
+            library: this._presetLibrary
+        });
+    }
+    loadPresetLibrary() {
+        const fallback = {
+            environments: [],
+            languages: []
+        };
+        const libraryPath = path.join(this.context.extensionPath, PRESET_LIBRARY_FILE);
+        let raw;
+        try {
+            raw = fs.readFileSync(libraryPath, 'utf8');
+        }
+        catch {
+            return fallback;
+        }
+        try {
+            const parsed = JSON.parse(raw);
+            return this.normalizePresetLibrary(parsed);
+        }
+        catch {
+            return fallback;
+        }
+    }
+    normalizePresetLibrary(raw) {
+        const fallback = {
+            environments: [],
+            languages: []
+        };
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            return fallback;
+        }
+        const data = raw;
+        const envSource = this.extractPresetSection(data, 'environments');
+        const langSource = this.extractPresetSection(data, 'languages');
+        if (envSource || langSource) {
+            return {
+                environments: this.normalizePresetGroups(envSource),
+                languages: this.normalizePresetGroups(langSource)
+            };
+        }
+        const split = this.splitPresetGroups(data);
+        return {
+            environments: this.normalizePresetGroups(split.environments),
+            languages: this.normalizePresetGroups(split.languages)
+        };
+    }
+    extractPresetSection(data, key) {
+        const value = data[key];
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return undefined;
+        }
+        return value;
+    }
+    splitPresetGroups(data) {
+        const environments = {};
+        const languages = {};
+        for (const [key, value] of Object.entries(data)) {
+            if (key === 'environments' || key === 'languages') {
+                continue;
+            }
+            if (this.isLanguageKey(key)) {
+                languages[key] = value;
+            }
+            else {
+                environments[key] = value;
+            }
+        }
+        return { environments, languages };
+    }
+    normalizePresetGroups(source) {
+        if (!source || typeof source !== 'object') {
+            return [];
+        }
+        const groups = [];
+        for (const [groupId, groupValue] of Object.entries(source)) {
+            if (!groupValue || typeof groupValue !== 'object' || Array.isArray(groupValue)) {
+                continue;
+            }
+            const categories = [];
+            for (const [categoryId, categoryValue] of Object.entries(groupValue)) {
+                if (!Array.isArray(categoryValue)) {
+                    continue;
+                }
+                const commands = [];
+                for (const entry of categoryValue) {
+                    const command = String(entry?.command ?? '').trim();
+                    if (!command) {
+                        continue;
+                    }
+                    const description = String(entry?.description ?? '').trim();
+                    commands.push({ command, description: description || undefined });
+                }
+                if (commands.length) {
+                    categories.push({
+                        id: categoryId,
+                        label: this.formatPresetLabel(categoryId),
+                        commands
+                    });
+                }
+            }
+            if (categories.length) {
+                groups.push({
+                    id: groupId,
+                    label: this.formatPresetLabel(groupId),
+                    categories
+                });
+            }
+        }
+        return groups;
+    }
+    formatPresetLabel(value) {
+        const normalized = String(value ?? '').trim();
+        if (!normalized) {
+            return '';
+        }
+        const parts = normalized.split(/[_-]+/).filter(Boolean);
+        const mapped = parts.map((part) => {
+            const lower = part.toLowerCase();
+            if (lower === 'javascript') {
+                return 'JavaScript';
+            }
+            if (lower === 'typescript') {
+                return 'TypeScript';
+            }
+            if (lower === 'csharp' || lower === 'c#') {
+                return 'C#';
+            }
+            if (lower === 'cpp' || lower === 'c++') {
+                return 'C++';
+            }
+            if (lower === 'dotnet') {
+                return '.NET';
+            }
+            return lower.charAt(0).toUpperCase() + lower.slice(1);
+        });
+        return mapped.join(' ');
+    }
+    isLanguageKey(key) {
+        const normalized = key.toLowerCase();
+        const languageTokens = [
+            'javascript',
+            'typescript',
+            'python',
+            'ruby',
+            'php',
+            'java',
+            'go',
+            'golang',
+            'rust',
+            'csharp',
+            'c#',
+            'cpp',
+            'c++',
+            'dotnet',
+            'swift',
+            'kotlin',
+            'scala',
+            'dart',
+            'lua'
+        ];
+        return languageTokens.some((token) => normalized.includes(token));
     }
     getAccentColors() {
         const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
@@ -745,6 +926,105 @@ class CommandButtonsViewProvider {
       flex-wrap: wrap;
     }
 
+    .preset-library {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .preset-library-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .preset-filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.35rem;
+    }
+
+    .preset-filter {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      min-width: 0;
+    }
+
+    .preset-filter label {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
+    .preset-library-list {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.25rem;
+      max-height: 12rem;
+      overflow-y: auto;
+      background-color: var(--input-bg);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .preset-library-empty {
+      font-size: 11px;
+      opacity: 0.6;
+      text-align: center;
+      padding: 0.35rem;
+    }
+
+    .preset-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .preset-group-title {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .preset-category {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .preset-category-title {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
+    .preset-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.05rem;
+      text-align: left;
+      width: 100%;
+      border: 1px solid var(--border);
+      background-color: var(--secondary-bg);
+      color: var(--secondary-fg);
+      padding: 0.25rem 0.35rem;
+    }
+
+    .preset-item:hover {
+      background-color: var(--secondary-hover);
+    }
+
+    .preset-item .command {
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    .preset-item .description {
+      font-size: 10px;
+      opacity: 0.75;
+    }
+
     select {
       flex: 1;
       border-radius: 4px;
@@ -970,11 +1250,25 @@ class CommandButtonsViewProvider {
         <div class="empty">No commands yet. Add one below.</div>
       </div>
       <div class="add-form">
+        <div class="preset-library">
+          <div class="preset-library-title">Preset library</div>
+          <div class="preset-filters">
+            <div class="preset-filter">
+              <label for="presetEnvironmentSelect">Environment</label>
+              <select id="presetEnvironmentSelect"></select>
+            </div>
+            <div class="preset-filter">
+              <label for="presetLanguageSelect">Language</label>
+              <select id="presetLanguageSelect"></select>
+            </div>
+          </div>
+          <div id="presetLibraryList" class="preset-library-list" role="list"></div>
+        </div>
         <div class="preset-row">
           <select id="presetSelect">
-            <option value="">Preset library...</option>
+            <option value="">Saved presets...</option>
           </select>
-          <button id="presetAddBtn" title="Save the current inputs as a preset">Add preset</button>
+          <button id="presetAddBtn" title="Save the current inputs as a preset">Save preset</button>
           <button id="presetRemoveBtn" class="btn-delete" title="Remove selected preset">Remove</button>
           <button id="presetRestoreBtn" class="btn-secondary" title="Restore default presets">Restore defaults</button>
         </div>
@@ -1018,6 +1312,9 @@ class CommandButtonsViewProvider {
     const commandsList = document.getElementById('commandsList');
     const commandsGrid = document.getElementById('commandsGrid');
     const mainPanel = document.getElementById('mainPanel');
+    const presetEnvironmentSelect = document.getElementById('presetEnvironmentSelect');
+    const presetLanguageSelect = document.getElementById('presetLanguageSelect');
+    const presetLibraryList = document.getElementById('presetLibraryList');
     const presetSelect = document.getElementById('presetSelect');
     const presetAddBtn = document.getElementById('presetAddBtn');
     const presetRemoveBtn = document.getElementById('presetRemoveBtn');
@@ -1035,7 +1332,10 @@ class CommandButtonsViewProvider {
     const modeDynamicAllBtn = document.getElementById('modeDynamicAllBtn');
     const collapseToggle = document.getElementById('collapseToggle');
 
-    let presetLibrary = normalizePresetsForView(${JSON.stringify(this._presets)});
+    let savedPresets = normalizePresetsForView(${JSON.stringify(this._presets)});
+    let presetReferenceLibrary = normalizeReferenceLibrary(
+      ${JSON.stringify(this._presetLibrary)}
+    );
     const PLACEHOLDER_TOKEN = '\${input}';
     const COMMAND_PLACEHOLDERS = [
       { token: '\${file}', description: 'active file path.' },
@@ -1124,6 +1424,12 @@ class CommandButtonsViewProvider {
     let viewState = typeof vscode.getState === 'function' ? vscode.getState() || {} : {};
     const cachedCommands = Array.isArray(viewState.commands) ? viewState.commands : [];
     const cachedPresets = Array.isArray(viewState.presets) ? viewState.presets : [];
+    let selectedEnvironmentId =
+      typeof viewState.presetEnvironmentId === 'string'
+        ? viewState.presetEnvironmentId
+        : '';
+    let selectedLanguageId =
+      typeof viewState.presetLanguageId === 'string' ? viewState.presetLanguageId : '';
     let commands = normalizeCommandsForView(cachedCommands);
     let gridColumns = 2;
     if (Number.isInteger(viewState.gridColumns)) {
@@ -1141,10 +1447,11 @@ class CommandButtonsViewProvider {
     let commandSuggestionTrigger = null;
 
     if (cachedPresets.length) {
-      presetLibrary = normalizePresetsForView(cachedPresets);
+      savedPresets = normalizePresetsForView(cachedPresets);
     }
 
     populatePresetDropdown();
+    populatePresetFilters();
     setCollapsed(isCollapsed);
     setGridColumns(gridColumns);
     setGridPosition(gridPosition);
@@ -1259,6 +1566,268 @@ class CommandButtonsViewProvider {
         normalized.push({ id, label, text });
       }
       return normalized;
+    }
+
+    function normalizeReferenceLibrary(library) {
+      return {
+        environments: normalizeReferenceGroups(library?.environments),
+        languages: normalizeReferenceGroups(library?.languages)
+      };
+    }
+
+    function normalizeReferenceGroups(groups) {
+      if (!Array.isArray(groups)) {
+        return [];
+      }
+      const normalized = [];
+      for (const group of groups) {
+        const id = String(group?.id ?? '').trim();
+        if (!id) {
+          continue;
+        }
+        const label = String(group?.label ?? id).trim() || id;
+        const categories = normalizeReferenceCategories(group?.categories);
+        if (!categories.length) {
+          continue;
+        }
+        normalized.push({ id, label, categories });
+      }
+      return normalized;
+    }
+
+    function normalizeReferenceCategories(categories) {
+      if (!Array.isArray(categories)) {
+        return [];
+      }
+      const normalized = [];
+      for (const category of categories) {
+        const id = String(category?.id ?? '').trim();
+        if (!id) {
+          continue;
+        }
+        const label = String(category?.label ?? id).trim() || id;
+        const commands = normalizeReferenceCommands(category?.commands);
+        if (!commands.length) {
+          continue;
+        }
+        normalized.push({ id, label, commands });
+      }
+      return normalized;
+    }
+
+    function normalizeReferenceCommands(list) {
+      if (!Array.isArray(list)) {
+        return [];
+      }
+      const normalized = [];
+      for (const entry of list) {
+        const command = String(entry?.command ?? '').trim();
+        if (!command) {
+          continue;
+        }
+        const description = String(entry?.description ?? '').trim();
+        normalized.push({
+          command,
+          description
+        });
+      }
+      return normalized;
+    }
+
+    function populatePresetFilters() {
+      if (!presetEnvironmentSelect || !presetLanguageSelect) {
+        return;
+      }
+      const environments = Array.isArray(presetReferenceLibrary.environments)
+        ? presetReferenceLibrary.environments
+        : [];
+      const languages = Array.isArray(presetReferenceLibrary.languages)
+        ? presetReferenceLibrary.languages
+        : [];
+
+      if (selectedEnvironmentId && !hasGroup(environments, selectedEnvironmentId)) {
+        selectedEnvironmentId = '';
+      }
+      if (selectedLanguageId && !hasGroup(languages, selectedLanguageId)) {
+        selectedLanguageId = '';
+      }
+
+      if (!selectedEnvironmentId && environments.length === 1) {
+        selectedEnvironmentId = environments[0].id;
+      }
+      if (!selectedLanguageId && languages.length === 1) {
+        selectedLanguageId = languages[0].id;
+      }
+
+      fillSelect(
+        presetEnvironmentSelect,
+        environments,
+        'Select environment...'
+      );
+      fillSelect(presetLanguageSelect, languages, 'Select language...');
+
+      presetEnvironmentSelect.disabled = environments.length === 0;
+      presetLanguageSelect.disabled = languages.length === 0;
+      presetEnvironmentSelect.value = selectedEnvironmentId || '';
+      presetLanguageSelect.value = selectedLanguageId || '';
+
+      persistViewState({
+        presetEnvironmentId: selectedEnvironmentId,
+        presetLanguageId: selectedLanguageId
+      });
+
+      renderPresetLibrary();
+    }
+
+    function fillSelect(select, groups, placeholderText) {
+      select.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = placeholderText;
+      select.appendChild(placeholder);
+
+      groups.forEach((group) => {
+        const opt = document.createElement('option');
+        opt.value = group.id;
+        opt.textContent = group.label || group.id;
+        select.appendChild(opt);
+      });
+    }
+
+    function hasGroup(groups, groupId) {
+      if (!Array.isArray(groups)) {
+        return false;
+      }
+      return groups.some((group) => group.id === groupId);
+    }
+
+    function findGroup(groups, groupId) {
+      if (!Array.isArray(groups)) {
+        return null;
+      }
+      return groups.find((group) => group.id === groupId) || null;
+    }
+
+    function renderPresetLibrary() {
+      if (!presetLibraryList) {
+        return;
+      }
+      presetLibraryList.innerHTML = '';
+
+      const hasLibrary =
+        (presetReferenceLibrary.environments &&
+          presetReferenceLibrary.environments.length) ||
+        (presetReferenceLibrary.languages && presetReferenceLibrary.languages.length);
+      if (!hasLibrary) {
+        renderPresetLibraryEmpty('Preset library not found.');
+        return;
+      }
+
+      const selections = [];
+      if (selectedEnvironmentId) {
+        const envGroup = findGroup(
+          presetReferenceLibrary.environments,
+          selectedEnvironmentId
+        );
+        if (envGroup) {
+          selections.push({ kind: 'Environment', group: envGroup });
+        }
+      }
+      if (selectedLanguageId) {
+        const langGroup = findGroup(
+          presetReferenceLibrary.languages,
+          selectedLanguageId
+        );
+        if (langGroup) {
+          selections.push({ kind: 'Language', group: langGroup });
+        }
+      }
+
+      if (!selections.length) {
+        renderPresetLibraryEmpty(
+          'Select an environment and language to view presets.'
+        );
+        return;
+      }
+
+      selections.forEach((selection) => {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'preset-group';
+
+        const title = document.createElement('div');
+        title.className = 'preset-group-title';
+        title.textContent =
+          selection.kind + ': ' + (selection.group.label || selection.group.id);
+        groupEl.appendChild(title);
+
+        selection.group.categories.forEach((category) => {
+          const categoryEl = document.createElement('div');
+          categoryEl.className = 'preset-category';
+
+          const categoryTitle = document.createElement('div');
+          categoryTitle.className = 'preset-category-title';
+          categoryTitle.textContent = category.label || category.id;
+          categoryEl.appendChild(categoryTitle);
+
+          category.commands.forEach((cmd) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'preset-item';
+            item.title = cmd.description
+              ? cmd.command + ' - ' + cmd.description
+              : cmd.command;
+
+            const commandLine = document.createElement('div');
+            commandLine.className = 'command';
+            commandLine.textContent = cmd.command;
+            item.appendChild(commandLine);
+
+            if (cmd.description) {
+              const desc = document.createElement('div');
+              desc.className = 'description';
+              desc.textContent = cmd.description;
+              item.appendChild(desc);
+            }
+
+            item.addEventListener('click', () => {
+              applyReferencePreset(cmd.command, cmd.description);
+            });
+
+            categoryEl.appendChild(item);
+          });
+
+          groupEl.appendChild(categoryEl);
+        });
+
+        presetLibraryList.appendChild(groupEl);
+      });
+    }
+
+    function renderPresetLibraryEmpty(message) {
+      if (!presetLibraryList) {
+        return;
+      }
+      const empty = document.createElement('div');
+      empty.className = 'preset-library-empty';
+      empty.textContent = message;
+      presetLibraryList.appendChild(empty);
+    }
+
+    function applyReferencePreset(command, description) {
+      if (!commandInput || !labelInput) {
+        return;
+      }
+      const trimmedCommand = String(command ?? '').trim();
+      if (!trimmedCommand) {
+        return;
+      }
+      const desc = String(description ?? '').trim();
+      const label =
+        desc && desc.length <= 40 ? desc : trimmedCommand;
+      labelInput.value = label;
+      commandInput.value = trimmedCommand;
+      hideCommandSuggestions();
+      commandInput.focus();
     }
 
     function getModeLabel(runMode) {
@@ -1705,10 +2274,10 @@ class CommandButtonsViewProvider {
       presetSelect.innerHTML = '';
       const placeholder = document.createElement('option');
       placeholder.value = '';
-      placeholder.textContent = 'Preset library...';
+      placeholder.textContent = 'Saved presets...';
       presetSelect.appendChild(placeholder);
 
-      presetLibrary.forEach((preset, index) => {
+      savedPresets.forEach((preset, index) => {
         const opt = document.createElement('option');
         opt.value = String(index);
         opt.textContent = preset.label || preset.text;
@@ -1718,7 +2287,7 @@ class CommandButtonsViewProvider {
     }
 
     function applyPresetToInputs(index) {
-      const preset = presetLibrary[index];
+      const preset = savedPresets[index];
       if (!preset) return;
       labelInput.value = preset.label || preset.text;
       commandInput.value = preset.text;
@@ -1739,7 +2308,7 @@ class CommandButtonsViewProvider {
       if (Number.isNaN(selectedIndex)) {
         return;
       }
-      const preset = presetLibrary[selectedIndex];
+      const preset = savedPresets[selectedIndex];
       if (!preset || !preset.id) {
         return;
       }
@@ -1876,6 +2445,18 @@ class CommandButtonsViewProvider {
       }
     });
 
+    presetEnvironmentSelect?.addEventListener('change', () => {
+      selectedEnvironmentId = presetEnvironmentSelect.value;
+      persistViewState({ presetEnvironmentId: selectedEnvironmentId });
+      renderPresetLibrary();
+    });
+
+    presetLanguageSelect?.addEventListener('change', () => {
+      selectedLanguageId = presetLanguageSelect.value;
+      persistViewState({ presetLanguageId: selectedLanguageId });
+      renderPresetLibrary();
+    });
+
     addBtn.addEventListener('click', () => {
       addCommandFromInputs();
     });
@@ -1922,9 +2503,14 @@ class CommandButtonsViewProvider {
           break;
         }
         case 'setPresets': {
-          presetLibrary = normalizePresetsForView(message.presets);
-          persistViewState({ presets: presetLibrary });
+          savedPresets = normalizePresetsForView(message.presets);
+          persistViewState({ presets: savedPresets });
           populatePresetDropdown();
+          break;
+        }
+        case 'setPresetLibrary': {
+          presetReferenceLibrary = normalizeReferenceLibrary(message.library);
+          populatePresetFilters();
           break;
         }
         case 'setAccent': {

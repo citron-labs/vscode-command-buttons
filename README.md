@@ -1,5 +1,33 @@
 # Command Buttons Panel
 
+## Visual guide
+<table>
+  <tr>
+    <td>
+      <h4 id="adding-commands-from-presets">Add CMD from preset</h4>
+        <img src="instructions/AddingCommandsfromPresets.gif" alt="GIF showing how to add a preset command via the dropdown" width="100%" />
+        <p>Use the preset picker illustrated above to add common commands with one click.</p>
+    </td>
+    <td>
+      <h4 id="adding-a-custom-command-with-a-custom-label">Add CMD W/ custom label</h4>
+        <img src="instructions/addingCustomCommandwithCustomLabel.gif" alt="GIF demonstrating entering a custom command and label" width="100%" />
+        <p>Create your own commands, give them descriptive labels, and reorder them immediately after adding.</p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <h4 id="display-options">Display options</h4>
+        <img src="instructions/displayOptions.gif" alt="GIF showing toggles for different grid/list layouts" width="100%" />
+        <p>Switch between grid/list layouts, collapse the list, and pick 1-4 columns so your preferred layout stays front and center.</p>
+    </td>
+    <td>
+      <h4 id="show-or-hide-commands">Show or hide commands</h4>
+        <img src="instructions/showHideCommands.gif" alt="GIF of hiding and showing commands from the list" width="100%" />
+        <p>Toggle visibility on commands you only need sometimes so the panel stays focused on what matters.</p>
+    </td>
+  </tr>
+</table>
+
 ## Table of Contents
 - [Features](#features)
 - [Preview](#preview)
@@ -25,7 +53,7 @@ Run your go-to terminal commands from a draggable grid in the Explorer. Add butt
 - Drag to reorder commands and pick 1-4 grid columns.
 - Four run modes: Copy + Enter (default), Copy only to clipboard, Copy only to terminal, and Dynamic Input using a `${input}` placeholder with synced values across the UI.
 - Dedicated terminal named **Command Buttons** that is created once and reused.
-- Preset library for common npm/git/docker commands; add your own in seconds.
+- Preset library sourced from `terminal-command-reference.json`, organized by environment and language selectors.
 - Commands persist per workspace when one is open, otherwise globally; Settings Sync can keep them in sync.
 - Accent/button color can be customized via the `commandButtons.accentColor` setting.
 
@@ -95,8 +123,9 @@ Use these placeholders in commands (they mirror VS Code task variables):
 </details>
 
 ### Presets
-- Use the preset dropdown to add a command from the built-in library (npm dev/build/test, git status, docker compose up).
-- Edit or delete presets after adding them like any other command.
+- Use the preset library filters to pick an environment and language, then click a preset to load it into the inputs.
+- The preset library is sourced from `terminal-command-reference.json` and grouped into environment and language sections.
+- Use the saved presets dropdown to reuse your custom entries or restore the built-in defaults.
 
 ### Appearance
 - `commandButtons.accentColor` sets the accent/button color for the panel.
@@ -139,6 +168,12 @@ Example `settings.json`:
 </table>
 
 ## Release Notes
+### 0.2.9
+- Added duplicate "Visual guide" section at the top of the README for improved user visibility.
+
+### 0.2.8
+- Added an environment/language preset library sourced from `terminal-command-reference.json`.
+
 ### 0.2.7
 - Added an autocomplete dropdown for placeholder variables when typing `$` in the command input.
 

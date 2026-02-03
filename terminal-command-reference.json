@@ -1,0 +1,216 @@
+{
+  "general_terminal": {
+    "navigation_filesystem": [
+      { "command": "pwd", "description": "Print current working directory (macOS/Linux; often available in Git Bash)." },
+      { "command": "ls", "description": "List directory contents (macOS/Linux)." },
+      { "command": "ls -la", "description": "List directory contents (detailed, including hidden files) (macOS/Linux)." },
+      { "command": "dir", "description": "List directory contents (Windows CMD)." },
+      { "command": "Get-ChildItem", "description": "List directory contents (PowerShell)." },
+      { "command": "cd <path>", "description": "Change directory." },
+      { "command": "mkdir <dir>", "description": "Create a directory." },
+      { "command": "rmdir <dir>", "description": "Remove empty directory (Windows CMD)." },
+      { "command": "Remove-Item <path> -Recurse -Force", "description": "Remove files/directories recursively (PowerShell)." },
+      { "command": "touch <file>", "description": "Create a new file (macOS/Linux)." },
+      { "command": "New-Item <file>", "description": "Create a new file (PowerShell)." },
+      { "command": "cp <src> <dest>", "description": "Copy files/directories (macOS/Linux)." },
+      { "command": "copy <src> <dest>", "description": "Copy files (Windows CMD)." },
+      { "command": "Copy-Item <src> <dest>", "description": "Copy files/directories (PowerShell)." },
+      { "command": "mv <src> <dest>", "description": "Move/rename (macOS/Linux)." },
+      { "command": "move <src> <dest>", "description": "Move/rename (Windows CMD)." },
+      { "command": "Move-Item <src> <dest>", "description": "Move/rename (PowerShell)." },
+      { "command": "rm <file>", "description": "Remove a file (macOS/Linux)." },
+      { "command": "rm -rf <dir>", "description": "Remove a directory recursively (macOS/Linux; use with care)." },
+      { "command": "del <file>", "description": "Remove a file (Windows CMD)." },
+      { "command": "clear", "description": "Clear terminal screen (macOS/Linux)." },
+      { "command": "cls", "description": "Clear terminal screen (Windows)." }
+    ],
+    "viewing_text": [
+      { "command": "cat <file>", "description": "Print file contents (macOS/Linux)." },
+      { "command": "type <file>", "description": "Print file contents (Windows CMD)." },
+      { "command": "Get-Content <file>", "description": "Print file contents (PowerShell)." },
+      { "command": "less <file>", "description": "Paged file viewer (macOS/Linux)." },
+      { "command": "head -n <n> <file>", "description": "Show first n lines (macOS/Linux)." },
+      { "command": "tail -n <n> <file>", "description": "Show last n lines (macOS/Linux)." },
+      { "command": "tail -f <file>", "description": "Follow a file as it grows (macOS/Linux)." }
+    ],
+    "search": [
+      { "command": "find . -name \"<pattern>\"", "description": "Find files by name (macOS/Linux)." },
+      { "command": "where <exe>", "description": "Locate an executable on PATH (Windows)." },
+      { "command": "which <exe>", "description": "Locate an executable on PATH (macOS/Linux)." },
+      { "command": "grep -R \"<text>\" .", "description": "Search for text recursively (macOS/Linux)." },
+      { "command": "Select-String -Path .\\* -Pattern \"<text>\" -Recurse", "description": "Search for text recursively (PowerShell)." }
+    ],
+    "processes_environment": [
+      { "command": "echo $VAR", "description": "Print environment variable (bash/zsh)." },
+      { "command": "echo %VAR%", "description": "Print environment variable (Windows CMD)." },
+      { "command": "$env:VAR", "description": "Print environment variable (PowerShell)." },
+      { "command": "export VAR=value", "description": "Set environment variable (bash/zsh)." },
+      { "command": "set VAR=value", "description": "Set environment variable (Windows CMD)." },
+      { "command": "$env:VAR=\"value\"", "description": "Set environment variable (PowerShell)." },
+      { "command": "ps", "description": "List processes (macOS/Linux)." },
+      { "command": "tasklist", "description": "List processes (Windows)." },
+      { "command": "Get-Process", "description": "List processes (PowerShell)." },
+      { "command": "kill <pid>", "description": "Terminate process by PID (macOS/Linux)." },
+      { "command": "taskkill /PID <pid> /F", "description": "Force terminate process by PID (Windows)." },
+      { "command": "Stop-Process -Id <pid>", "description": "Terminate process by PID (PowerShell)." }
+    ],
+    "shortcuts": [
+      { "command": "Ctrl+C", "description": "Cancel running command." },
+      { "command": "Ctrl+L", "description": "Clear screen shortcut (many terminals)." },
+      { "command": "Up/Down Arrow", "description": "Navigate command history." },
+      { "command": "Tab", "description": "Autocomplete file/directory names." }
+    ],
+    "archives": [
+      { "command": "tar -czf <out.tgz> <folder>", "description": "Create tar.gz archive (macOS/Linux)." },
+      { "command": "tar -xzf <out.tgz>", "description": "Extract tar.gz archive (macOS/Linux)." },
+      { "command": "zip -r <out.zip> <folder>", "description": "Create zip archive (macOS/Linux)." },
+      { "command": "unzip <out.zip>", "description": "Extract zip archive (macOS/Linux)." },
+      { "command": "Compress-Archive -Path <path> -DestinationPath <out.zip>", "description": "Create zip archive (PowerShell)." },
+      { "command": "Expand-Archive <out.zip> -DestinationPath <path>", "description": "Extract zip archive (PowerShell)." }
+    ]
+  },
+  "git": {
+    "setup_basics": [
+      { "command": "git init", "description": "Initialize a new local repository." },
+      { "command": "git clone <url>", "description": "Clone a remote repository." },
+      { "command": "git remote -v", "description": "Show remotes." },
+      { "command": "git status", "description": "Show working tree status." },
+      { "command": "git log --oneline --graph --decorate --all", "description": "Compact visual commit history." }
+    ],
+    "stage_commit": [
+      { "command": "git add <file>", "description": "Stage changes for commit." },
+      { "command": "git add .", "description": "Stage all changes." },
+      { "command": "git commit -m \"<message>\"", "description": "Commit staged changes." },
+      { "command": "git commit --amend", "description": "Edit last commit (message/content)." }
+    ],
+    "branching": [
+      { "command": "git branch", "description": "List branches." },
+      { "command": "git branch <name>", "description": "Create branch." },
+      { "command": "git switch <name>", "description": "Switch branches." },
+      { "command": "git switch -c <name>", "description": "Create and switch to a new branch." },
+      { "command": "git checkout <name>", "description": "Switch branches (legacy)." },
+      { "command": "git merge <branch>", "description": "Merge branch into current branch." },
+      { "command": "git rebase <branch>", "description": "Rebase current branch onto another (advanced)." }
+    ],
+    "remote_sync": [
+      { "command": "git fetch", "description": "Fetch remote changes." },
+      { "command": "git pull", "description": "Fetch and integrate changes." },
+      { "command": "git push", "description": "Push commits to remote." },
+      { "command": "git push -u origin <branch>", "description": "Push and set upstream." }
+    ],
+    "undo_clean": [
+      { "command": "git restore <file>", "description": "Discard unstaged changes in file." },
+      { "command": "git restore --staged <file>", "description": "Unstage changes." },
+      { "command": "git reset --soft HEAD~1", "description": "Undo last commit, keep changes staged." },
+      { "command": "git reset --mixed HEAD~1", "description": "Undo last commit, keep changes unstaged." },
+      { "command": "git reset --hard HEAD~1", "description": "Undo last commit and discard changes (dangerous)." },
+      { "command": "git clean -fd", "description": "Remove untracked files/directories (dangerous)." }
+    ]
+  },
+  "javascript_typescript": {
+    "node": [
+      { "command": "node <file.js>", "description": "Run a JavaScript file." },
+      { "command": "node -v", "description": "Print Node.js version." }
+    ],
+    "npm": [
+      { "command": "npm init", "description": "Create a package.json interactively." },
+      { "command": "npm init -y", "description": "Create a package.json with defaults." },
+      { "command": "npm install", "description": "Install dependencies." },
+      { "command": "npm install <pkg>", "description": "Install a dependency." },
+      { "command": "npm install -D <pkg>", "description": "Install a dev dependency." },
+      { "command": "npm uninstall <pkg>", "description": "Remove a dependency." },
+      { "command": "npm run <script>", "description": "Run a package.json script." },
+      { "command": "npm start", "description": "Run the start script (convention)." },
+      { "command": "npm test", "description": "Run tests (convention)." },
+      { "command": "npm audit", "description": "Check for vulnerabilities." },
+      { "command": "npm audit fix", "description": "Attempt to fix vulnerabilities." },
+      { "command": "npm outdated", "description": "List outdated dependencies." },
+      { "command": "npx <tool>", "description": "Run a tool without global install." }
+    ],
+    "yarn": [
+      { "command": "yarn init -y", "description": "Initialize project." },
+      { "command": "yarn", "description": "Install dependencies." },
+      { "command": "yarn add <pkg>", "description": "Add dependency." },
+      { "command": "yarn add -D <pkg>", "description": "Add dev dependency." },
+      { "command": "yarn remove <pkg>", "description": "Remove dependency." },
+      { "command": "yarn run <script>", "description": "Run script." },
+      { "command": "yarn test", "description": "Run tests (convention)." },
+      { "command": "yarn dlx <tool>", "description": "Run tool (like npx)." }
+    ],
+    "pnpm": [
+      { "command": "pnpm init", "description": "Initialize project." },
+      { "command": "pnpm install", "description": "Install dependencies." },
+      { "command": "pnpm add <pkg>", "description": "Add dependency." },
+      { "command": "pnpm add -D <pkg>", "description": "Add dev dependency." },
+      { "command": "pnpm remove <pkg>", "description": "Remove dependency." },
+      { "command": "pnpm run <script>", "description": "Run script." },
+      { "command": "pnpm dlx <tool>", "description": "Run tool (like npx)." }
+    ],
+    "typescript_tooling": [
+      { "command": "tsc", "description": "Compile TypeScript." },
+      { "command": "tsc --init", "description": "Create tsconfig.json." },
+      { "command": "ts-node <file.ts>", "description": "Run TypeScript directly (if installed)." },
+      { "command": "eslint .", "description": "Lint (if configured)." },
+      { "command": "prettier -w .", "description": "Format (if configured)." }
+    ],
+    "common_repo_scripts": [
+      { "command": "npm run dev", "description": "Run dev server (common convention)." },
+      { "command": "npm run build", "description": "Build for production (common convention)." },
+      { "command": "npm run lint", "description": "Lint (common convention)." }
+    ]
+  },
+  "python": {
+    "runtime": [
+      { "command": "python --version", "description": "Print Python version." },
+      { "command": "python3 --version", "description": "Print Python version (macOS/Linux)." },
+      { "command": "python <file.py>", "description": "Run a Python script." },
+      { "command": "python -m <module>", "description": "Run a module as a script." }
+    ],
+    "pip": [
+      { "command": "python -m pip install <pkg>", "description": "Install package (recommended form)." },
+      { "command": "pip install <pkg>", "description": "Install package." },
+      { "command": "pip install -r requirements.txt", "description": "Install from requirements file." },
+      { "command": "pip freeze > requirements.txt", "description": "Export installed packages." },
+      { "command": "pip list", "description": "List installed packages." },
+      { "command": "pip show <pkg>", "description": "Show package details." },
+      { "command": "pip uninstall <pkg>", "description": "Uninstall package." }
+    ],
+    "venv": [
+      { "command": "python -m venv .venv", "description": "Create virtual environment." },
+      { "command": "source .venv/bin/activate", "description": "Activate venv (macOS/Linux)." },
+      { "command": ".\\.venv\\Scripts\\Activate.ps1", "description": "Activate venv (Windows PowerShell)." },
+      { "command": ".\\.venv\\Scripts\\activate.bat", "description": "Activate venv (Windows CMD)." },
+      { "command": "deactivate", "description": "Deactivate venv." }
+    ],
+    "poetry": [
+      { "command": "poetry init", "description": "Initialize poetry project." },
+      { "command": "poetry add <pkg>", "description": "Add dependency." },
+      { "command": "poetry add --group dev <pkg>", "description": "Add dev dependency." },
+      { "command": "poetry install", "description": "Install dependencies." },
+      { "command": "poetry run python <file.py>", "description": "Run within poetry environment." },
+      { "command": "poetry shell", "description": "Spawn a shell in the venv." }
+    ],
+    "pipenv": [
+      { "command": "pipenv install", "description": "Create env and install deps." },
+      { "command": "pipenv install <pkg>", "description": "Install dependency." },
+      { "command": "pipenv install --dev <pkg>", "description": "Install dev dependency." },
+      { "command": "pipenv shell", "description": "Enter pipenv shell." },
+      { "command": "pipenv run python <file.py>", "description": "Run within pipenv environment." }
+    ],
+    "conda": [
+      { "command": "conda create -n <env> python=3.11", "description": "Create conda environment." },
+      { "command": "conda activate <env>", "description": "Activate environment." },
+      { "command": "conda deactivate", "description": "Deactivate environment." },
+      { "command": "conda install <pkg>", "description": "Install package." },
+      { "command": "conda list", "description": "List installed packages." },
+      { "command": "conda env list", "description": "List environments." }
+    ],
+    "common_tools": [
+      { "command": "pytest", "description": "Run tests (if configured)." },
+      { "command": "python -m unittest", "description": "Run unittest suite." },
+      { "command": "ruff check .", "description": "Lint (if used)." },
+      { "command": "black .", "description": "Format (if used)." },
+      { "command": "isort .", "description": "Sort imports (if used)." }
+    ]
+  }
+}

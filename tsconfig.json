@@ -8,7 +8,7 @@
     "strict": true,
     "sourceMap": true,
     "typeRoots": ["./node_modules/@types"],
-    "types": ["vscode"]
+    "types": ["vscode", "node"]
   },
   "include": ["src"]
 }
