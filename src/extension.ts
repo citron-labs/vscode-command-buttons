@@ -1096,10 +1096,22 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       flex-wrap: wrap;
     }
 
+    .preset-row-tools {
+      justify-content: flex-start;
+    }
+
     .preset-library {
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
+    }
+
+    .preset-library-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      flex-wrap: wrap;
     }
 
     .preset-library-title {
@@ -1107,6 +1119,22 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       font-weight: 600;
       letter-spacing: 0.02em;
       text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .preset-library-subtitle {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
+    .preset-library-search {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .preset-library-summary {
+      font-size: 10px;
       opacity: 0.7;
     }
 
@@ -1132,7 +1160,7 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.25rem;
-      max-height: 12rem;
+      max-height: 14rem;
       overflow-y: auto;
       background-color: var(--input-bg);
       display: flex;
@@ -1156,6 +1184,15 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     .preset-group-title {
       font-size: 11px;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+    }
+
+    .preset-group-title .count {
+      font-size: 10px;
+      opacity: 0.6;
     }
 
     .preset-category {
@@ -1183,6 +1220,34 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
 
     .preset-item:hover {
       background-color: var(--secondary-hover);
+    }
+
+    .preset-item-custom {
+      background-color: var(--surface);
+      border-style: dashed;
+    }
+
+    .preset-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+    }
+
+    .preset-item-label {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .preset-item-actions {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .btn-xs {
+      font-size: 10px;
+      padding: 0.15rem 0.35rem;
     }
 
     .preset-item .command {
@@ -1421,7 +1486,28 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       </div>
       <div class="add-form">
         <div class="preset-library">
-          <div class="preset-library-title">Preset library</div>
+          <div class="preset-library-header">
+            <div>
+              <div class="preset-library-title">Preset library</div>
+              <div class="preset-library-subtitle">
+                Search shared presets and your saved presets.
+              </div>
+            </div>
+            <div class="preset-library-search">
+              <input
+                id="presetSearchInput"
+                type="text"
+                placeholder="Search presets..."
+              />
+              <button
+                id="presetSearchClear"
+                class="btn-secondary"
+                title="Clear search"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
           <div class="preset-filters">
             <div class="preset-filter">
               <label for="presetEnvironmentSelect">Environment</label>
@@ -1431,16 +1517,32 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
               <label for="presetLanguageSelect">Language</label>
               <select id="presetLanguageSelect"></select>
             </div>
+            <div class="preset-filter">
+              <label for="presetScopeSelect">Scope</label>
+              <select id="presetScopeSelect">
+                <option value="all">All presets</option>
+                <option value="library">Library only</option>
+                <option value="mine">My presets</option>
+              </select>
+            </div>
           </div>
+          <div id="presetLibrarySummary" class="preset-library-summary"></div>
           <div id="presetLibraryList" class="preset-library-list" role="list"></div>
         </div>
-        <div class="preset-row">
-          <select id="presetSelect">
-            <option value="">Saved presets...</option>
-          </select>
-          <button id="presetAddBtn" title="Save the current inputs as a preset">Save preset</button>
-          <button id="presetRemoveBtn" class="btn-delete" title="Remove selected preset">Remove</button>
-          <button id="presetRestoreBtn" class="btn-secondary" title="Restore default presets">Restore defaults</button>
+        <div class="preset-row preset-row-tools">
+          <button
+            id="presetAddBtn"
+            title="Save the current inputs to My Presets (stored locally)"
+          >
+            Save to My Presets
+          </button>
+          <button
+            id="presetRestoreBtn"
+            class="btn-secondary"
+            title="Restore default presets"
+          >
+            Restore defaults
+          </button>
         </div>
         <div class="add-row">
           <input
@@ -1484,10 +1586,12 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
     const mainPanel = document.getElementById('mainPanel');
     const presetEnvironmentSelect = document.getElementById('presetEnvironmentSelect');
     const presetLanguageSelect = document.getElementById('presetLanguageSelect');
+    const presetSearchInput = document.getElementById('presetSearchInput');
+    const presetSearchClear = document.getElementById('presetSearchClear');
+    const presetScopeSelect = document.getElementById('presetScopeSelect');
+    const presetLibrarySummary = document.getElementById('presetLibrarySummary');
     const presetLibraryList = document.getElementById('presetLibraryList');
-    const presetSelect = document.getElementById('presetSelect');
     const presetAddBtn = document.getElementById('presetAddBtn');
-    const presetRemoveBtn = document.getElementById('presetRemoveBtn');
     const presetRestoreBtn = document.getElementById('presetRestoreBtn');
 
     const cols1Btn = document.getElementById('cols1Btn');
@@ -1600,6 +1704,13 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
         : '';
     let selectedLanguageId =
       typeof viewState.presetLanguageId === 'string' ? viewState.presetLanguageId : '';
+    let presetSearchQuery =
+      typeof viewState.presetSearchQuery === 'string' ? viewState.presetSearchQuery : '';
+    let presetScope =
+      typeof viewState.presetScope === 'string' ? viewState.presetScope : 'all';
+    if (!['all', 'library', 'mine'].includes(presetScope)) {
+      presetScope = 'all';
+    }
     let commands = normalizeCommandsForView(cachedCommands);
     let gridColumns = 2;
     if (Number.isInteger(viewState.gridColumns)) {
@@ -1620,7 +1731,12 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       savedPresets = normalizePresetsForView(cachedPresets);
     }
 
-    populatePresetDropdown();
+    if (presetSearchInput) {
+      presetSearchInput.value = presetSearchQuery;
+    }
+    if (presetScopeSelect) {
+      presetScopeSelect.value = presetScope;
+    }
     populatePresetFilters();
     setCollapsed(isCollapsed);
     setGridColumns(gridColumns);
@@ -2437,31 +2553,14 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'updateAllCommandModes', runMode });
     }
 
-    function populatePresetDropdown() {
-      if (!presetSelect) {
+    function applySavedPreset(preset) {
+      if (!preset || !labelInput || !commandInput) {
         return;
       }
-      presetSelect.innerHTML = '';
-      const placeholder = document.createElement('option');
-      placeholder.value = '';
-      placeholder.textContent = 'Saved presets...';
-      presetSelect.appendChild(placeholder);
-
-      savedPresets.forEach((preset, index) => {
-        const opt = document.createElement('option');
-        opt.value = String(index);
-        opt.textContent = preset.label || preset.text;
-        opt.title = preset.text;
-        presetSelect.appendChild(opt);
-      });
-    }
-
-    function applyPresetToInputs(index) {
-      const preset = savedPresets[index];
-      if (!preset) return;
       labelInput.value = preset.label || preset.text;
       commandInput.value = preset.text;
       hideCommandSuggestions();
+      commandInput.focus();
     }
 
     function addPresetFromInputs() {
@@ -2470,25 +2569,15 @@ class CommandButtonsViewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'addPreset', label, text });
     }
 
-    function removeSelectedPreset() {
-      if (!presetSelect.value) {
+    function removeSavedPreset(presetId) {
+      if (!presetId) {
         return;
       }
-      const selectedIndex = Number(presetSelect.value);
-      if (Number.isNaN(selectedIndex)) {
-        return;
-      }
-      const preset = savedPresets[selectedIndex];
-      if (!preset || !preset.id) {
-        return;
-      }
-      vscode.postMessage({ type: 'removePreset', id: preset.id });
-      presetSelect.value = '';
+      vscode.postMessage({ type: 'removePreset', id: presetId });
     }
 
     function restorePresetDefaults() {
       vscode.postMessage({ type: 'restorePresetDefaults' });
-      presetSelect.value = '';
     }
 
     function setGridColumns(cols) {
