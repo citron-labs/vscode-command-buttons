@@ -21,6 +21,10 @@
       { "command": "rm <file>", "description": "Remove a file (macOS/Linux)." },
       { "command": "rm -rf <dir>", "description": "Remove a directory recursively (macOS/Linux; use with care)." },
       { "command": "del <file>", "description": "Remove a file (Windows CMD)." },
+      { "command": "cd ..", "description": "Go up one directory." },
+      { "command": "code .", "description": "Open the current folder in VS Code." },
+      { "command": "explorer .", "description": "Open the current folder in File Explorer (Windows)." },
+      { "command": "open .", "description": "Open the current folder in Finder (macOS)." },
       { "command": "clear", "description": "Clear terminal screen (macOS/Linux)." },
       { "command": "cls", "description": "Clear terminal screen (Windows)." }
     ],
@@ -38,6 +42,8 @@
       { "command": "where <exe>", "description": "Locate an executable on PATH (Windows)." },
       { "command": "which <exe>", "description": "Locate an executable on PATH (macOS/Linux)." },
       { "command": "grep -R \"<text>\" .", "description": "Search for text recursively (macOS/Linux)." },
+      { "command": "rg \"<text>\"", "description": "Search for text with ripgrep (if installed)." },
+      { "command": "findstr /s /i \"<text>\" *", "description": "Search for text recursively (Windows CMD)." },
       { "command": "Select-String -Path .\\* -Pattern \"<text>\" -Recurse", "description": "Search for text recursively (PowerShell)." }
     ],
     "processes_environment": [
@@ -53,6 +59,22 @@
       { "command": "kill <pid>", "description": "Terminate process by PID (macOS/Linux)." },
       { "command": "taskkill /PID <pid> /F", "description": "Force terminate process by PID (Windows)." },
       { "command": "Stop-Process -Id <pid>", "description": "Terminate process by PID (PowerShell)." }
+    ],
+    "networking": [
+      { "command": "ping <host>", "description": "Ping a host." },
+      { "command": "curl -I <url>", "description": "Fetch HTTP headers (macOS/Linux/Windows with curl)." },
+      { "command": "curl -L <url>", "description": "Download a URL following redirects." },
+      { "command": "wget <url>", "description": "Download a URL (macOS/Linux, if installed)." },
+      { "command": "ipconfig", "description": "Show IP configuration (Windows)." },
+      { "command": "ifconfig", "description": "Show network interfaces (macOS/Linux)." },
+      { "command": "Get-NetIPAddress", "description": "Show IP configuration (PowerShell)." }
+    ],
+    "system_info": [
+      { "command": "uname -a", "description": "Show system info (macOS/Linux)." },
+      { "command": "systeminfo", "description": "Show system info (Windows)." },
+      { "command": "Get-ComputerInfo", "description": "Detailed system info (PowerShell)." },
+      { "command": "df -h", "description": "Disk usage (macOS/Linux)." },
+      { "command": "Get-PSDrive", "description": "Disk usage (PowerShell)." }
     ],
     "shortcuts": [
       { "command": "Ctrl+C", "description": "Cancel running command." },
@@ -97,6 +119,29 @@
       { "command": "git pull", "description": "Fetch and integrate changes." },
       { "command": "git push", "description": "Push commits to remote." },
       { "command": "git push -u origin <branch>", "description": "Push and set upstream." }
+    ],
+    "diff_review": [
+      { "command": "git diff", "description": "Show unstaged changes." },
+      { "command": "git diff --staged", "description": "Show staged changes." },
+      { "command": "git show <commit>", "description": "Show a commit patch." },
+      { "command": "git log --stat", "description": "Show commit history with file stats." }
+    ],
+    "stash": [
+      { "command": "git stash", "description": "Stash current changes." },
+      { "command": "git stash list", "description": "List stashes." },
+      { "command": "git stash pop", "description": "Apply and drop latest stash." },
+      { "command": "git stash apply", "description": "Apply latest stash without dropping." }
+    ],
+    "tags_releases": [
+      { "command": "git tag", "description": "List tags." },
+      { "command": "git tag -a <tag> -m \"<message>\"", "description": "Create an annotated tag." },
+      { "command": "git push origin <tag>", "description": "Push a tag to remote." },
+      { "command": "git push --tags", "description": "Push all tags to remote." }
+    ],
+    "inspect": [
+      { "command": "git blame <file>", "description": "Show who changed each line." },
+      { "command": "git reflog", "description": "Show reference log." },
+      { "command": "git log -- <file>", "description": "Show history for a file." }
     ],
     "undo_clean": [
       { "command": "git restore <file>", "description": "Discard unstaged changes in file." },
@@ -146,6 +191,11 @@
       { "command": "pnpm run <script>", "description": "Run script." },
       { "command": "pnpm dlx <tool>", "description": "Run tool (like npx)." }
     ],
+    "project_scaffolds": [
+      { "command": "npm create vite@latest", "description": "Scaffold a Vite app." },
+      { "command": "npx create-next-app@latest", "description": "Scaffold a Next.js app." },
+      { "command": "npx create-react-app <name>", "description": "Scaffold a React app (legacy CRA)." }
+    ],
     "typescript_tooling": [
       { "command": "tsc", "description": "Compile TypeScript." },
       { "command": "tsc --init", "description": "Create tsconfig.json." },
@@ -156,7 +206,10 @@
     "common_repo_scripts": [
       { "command": "npm run dev", "description": "Run dev server (common convention)." },
       { "command": "npm run build", "description": "Build for production (common convention)." },
-      { "command": "npm run lint", "description": "Lint (common convention)." }
+      { "command": "npm run lint", "description": "Lint (common convention)." },
+      { "command": "npm run typecheck", "description": "Typecheck (common convention)." },
+      { "command": "npm run format", "description": "Format (common convention)." },
+      { "command": "npm run preview", "description": "Preview build (common convention)." }
     ]
   },
   "python": {
@@ -207,10 +260,124 @@
     ],
     "common_tools": [
       { "command": "pytest", "description": "Run tests (if configured)." },
+      { "command": "pytest -q", "description": "Run tests with quieter output." },
+      { "command": "python -m pytest", "description": "Run pytest as a module." },
       { "command": "python -m unittest", "description": "Run unittest suite." },
       { "command": "ruff check .", "description": "Lint (if used)." },
+      { "command": "ruff format .", "description": "Format with Ruff (if used)." },
       { "command": "black .", "description": "Format (if used)." },
       { "command": "isort .", "description": "Sort imports (if used)." }
+    ]
+  },
+  "docker": {
+    "images": [
+      { "command": "docker images", "description": "List Docker images." },
+      { "command": "docker image ls", "description": "List Docker images (alternate)." },
+      { "command": "docker pull <image>", "description": "Pull an image." },
+      { "command": "docker build -t <name> .", "description": "Build an image from the current directory." },
+      { "command": "docker rmi <image>", "description": "Remove an image." }
+    ],
+    "containers": [
+      { "command": "docker ps", "description": "List running containers." },
+      { "command": "docker ps -a", "description": "List all containers." },
+      { "command": "docker run --rm -it <image>", "description": "Run an image interactively and remove on exit." },
+      { "command": "docker exec -it <container> /bin/sh", "description": "Shell into a running container." },
+      { "command": "docker stop <container>", "description": "Stop a running container." },
+      { "command": "docker rm <container>", "description": "Remove a container." }
+    ],
+    "compose": [
+      { "command": "docker compose up", "description": "Start services (foreground)." },
+      { "command": "docker compose up -d", "description": "Start services (detached)." },
+      { "command": "docker compose down", "description": "Stop and remove services." },
+      { "command": "docker compose logs -f", "description": "Follow compose logs." },
+      { "command": "docker compose build", "description": "Build compose services." }
+    ],
+    "cleanup": [
+      { "command": "docker system prune", "description": "Remove unused data." },
+      { "command": "docker image prune", "description": "Remove unused images." },
+      { "command": "docker volume prune", "description": "Remove unused volumes." }
+    ]
+  },
+  "kubernetes": {
+    "cluster": [
+      { "command": "kubectl cluster-info", "description": "Show cluster info." },
+      { "command": "kubectl get nodes", "description": "List cluster nodes." },
+      { "command": "kubectl config get-contexts", "description": "List kube contexts." },
+      { "command": "kubectl config use-context <context>", "description": "Switch kube context." }
+    ],
+    "workloads": [
+      { "command": "kubectl get pods", "description": "List pods." },
+      { "command": "kubectl get deployments", "description": "List deployments." },
+      { "command": "kubectl describe pod <pod>", "description": "Describe a pod." },
+      { "command": "kubectl logs <pod>", "description": "View pod logs." },
+      { "command": "kubectl exec -it <pod> -- /bin/sh", "description": "Shell into a pod." }
+    ],
+    "apply": [
+      { "command": "kubectl apply -f <file.yaml>", "description": "Apply a manifest." },
+      { "command": "kubectl delete -f <file.yaml>", "description": "Delete resources from a manifest." },
+      { "command": "kubectl rollout status deployment/<name>", "description": "Check rollout status." },
+      { "command": "kubectl rollout restart deployment/<name>", "description": "Restart a deployment." }
+    ]
+  },
+  "dotnet": {
+    "project": [
+      { "command": "dotnet new sln -n <name>", "description": "Create a solution." },
+      { "command": "dotnet new console -n <name>", "description": "Create a console app." },
+      { "command": "dotnet new web -n <name>", "description": "Create a web app." },
+      { "command": "dotnet new classlib -n <name>", "description": "Create a class library." }
+    ],
+    "build_run": [
+      { "command": "dotnet restore", "description": "Restore dependencies." },
+      { "command": "dotnet build", "description": "Build the project." },
+      { "command": "dotnet run", "description": "Run the project." },
+      { "command": "dotnet watch", "description": "Run with file watching." },
+      { "command": "dotnet test", "description": "Run tests." }
+    ],
+    "packages": [
+      { "command": "dotnet add package <pkg>", "description": "Add a NuGet package." },
+      { "command": "dotnet list package", "description": "List packages." },
+      { "command": "dotnet remove package <pkg>", "description": "Remove a NuGet package." }
+    ]
+  },
+  "go": {
+    "modules": [
+      { "command": "go mod init <module>", "description": "Initialize a Go module." },
+      { "command": "go mod tidy", "description": "Add/remove module deps." },
+      { "command": "go list -m all", "description": "List module deps." }
+    ],
+    "build_run": [
+      { "command": "go run .", "description": "Run the current module." },
+      { "command": "go build", "description": "Build the current module." },
+      { "command": "go test ./...", "description": "Run all tests." },
+      { "command": "go test -run <test>", "description": "Run a specific test." }
+    ],
+    "tools": [
+      { "command": "go fmt ./...", "description": "Format packages." },
+      { "command": "go vet ./...", "description": "Vet packages." }
+    ]
+  },
+  "rust": {
+    "cargo": [
+      { "command": "cargo new <name>", "description": "Create a new Rust project." },
+      { "command": "cargo build", "description": "Build the project." },
+      { "command": "cargo run", "description": "Run the project." },
+      { "command": "cargo test", "description": "Run tests." },
+      { "command": "cargo fmt", "description": "Format code." },
+      { "command": "cargo clippy", "description": "Run Clippy lints." }
+    ]
+  },
+  "java": {
+    "maven": [
+      { "command": "mvn -v", "description": "Show Maven version." },
+      { "command": "mvn clean package", "description": "Build with Maven." },
+      { "command": "mvn test", "description": "Run tests with Maven." },
+      { "command": "mvn spring-boot:run", "description": "Run Spring Boot app." }
+    ],
+    "gradle": [
+      { "command": "gradle -v", "description": "Show Gradle version." },
+      { "command": "./gradlew build", "description": "Build with Gradle wrapper." },
+      { "command": "./gradlew test", "description": "Run tests with Gradle wrapper." },
+      { "command": "./gradlew bootRun", "description": "Run Spring Boot with Gradle." }
     ]
   }
 }

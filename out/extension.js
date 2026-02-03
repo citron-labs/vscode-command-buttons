@@ -214,13 +214,14 @@ class CommandButtonsViewProvider {
         }
         const normalized = [];
         for (const preset of presets) {
-            const text = String(preset?.text ?? '').trim();
-            if (!text) {
+            const rawText = this.normalizeCommandText(String(preset?.text ?? ''));
+            const trimmedText = rawText.trim();
+            if (!trimmedText) {
                 continue;
             }
-            const label = String(preset?.label ?? text).trim() || text;
+            const label = String(preset?.label ?? trimmedText).trim() || trimmedText;
             const id = String(preset?.id ?? this.createPresetId());
-            normalized.push({ id, label, text });
+            normalized.push({ id, label, text: trimmedText });
         }
         return normalized;
     }
@@ -412,19 +413,24 @@ class CommandButtonsViewProvider {
             accent: this.getAccentColors()
         });
     }
+    normalizeCommandText(value) {
+        return String(value ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    }
     createPresetId() {
         return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     }
     async addCommand(label, text) {
         const trimmedLabel = (label ?? '').trim();
-        const trimmedText = (text ?? '').trim();
+        const normalizedText = this.normalizeCommandText(text ?? '');
+        const trimmedText = normalizedText.trim();
         if (!trimmedText) {
             vscode.window.showWarningMessage('Please provide a command.');
             return;
         }
         const id = Date.now().toString();
-        const finalLabel = trimmedLabel || trimmedText;
-        const inferredMode = trimmedText.includes('${input}')
+        const defaultLabel = trimmedText.split('\n')[0] || trimmedText;
+        const finalLabel = trimmedLabel || defaultLabel;
+        const inferredMode = normalizedText.includes('${input}')
             ? 'dynamic'
             : 'enter';
         this._commands = [
@@ -442,12 +448,14 @@ class CommandButtonsViewProvider {
     }
     async addPreset(label, text) {
         const trimmedLabel = (label ?? '').trim();
-        const trimmedText = (text ?? '').trim();
+        const normalizedText = this.normalizeCommandText(text ?? '');
+        const trimmedText = normalizedText.trim();
         if (!trimmedText) {
             vscode.window.showWarningMessage('Please provide a command to save as a preset.');
             return;
         }
-        const finalLabel = trimmedLabel || trimmedText;
+        const defaultLabel = trimmedText.split('\n')[0] || trimmedText;
+        const finalLabel = trimmedLabel || defaultLabel;
         const exists = this._presets.some((preset) => preset.label === finalLabel && preset.text === trimmedText);
         if (exists) {
             vscode.window.showInformationMessage('That preset already exists.');
@@ -926,10 +934,22 @@ class CommandButtonsViewProvider {
       flex-wrap: wrap;
     }
 
+    .preset-row-tools {
+      justify-content: flex-start;
+    }
+
     .preset-library {
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
+    }
+
+    .preset-library-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      flex-wrap: wrap;
     }
 
     .preset-library-title {
@@ -937,6 +957,22 @@ class CommandButtonsViewProvider {
       font-weight: 600;
       letter-spacing: 0.02em;
       text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .preset-library-subtitle {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
+    .preset-library-search {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .preset-library-summary {
+      font-size: 10px;
       opacity: 0.7;
     }
 
@@ -962,7 +998,7 @@ class CommandButtonsViewProvider {
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.25rem;
-      max-height: 12rem;
+      max-height: 14rem;
       overflow-y: auto;
       background-color: var(--input-bg);
       display: flex;
@@ -986,6 +1022,15 @@ class CommandButtonsViewProvider {
     .preset-group-title {
       font-size: 11px;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+    }
+
+    .preset-group-title .count {
+      font-size: 10px;
+      opacity: 0.6;
     }
 
     .preset-category {
@@ -1013,6 +1058,34 @@ class CommandButtonsViewProvider {
 
     .preset-item:hover {
       background-color: var(--secondary-hover);
+    }
+
+    .preset-item-custom {
+      background-color: var(--surface);
+      border-style: dashed;
+    }
+
+    .preset-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+    }
+
+    .preset-item-label {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .preset-item-actions {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .btn-xs {
+      font-size: 10px;
+      padding: 0.15rem 0.35rem;
     }
 
     .preset-item .command {
@@ -1045,7 +1118,8 @@ class CommandButtonsViewProvider {
       gap: 0.25rem;
     }
 
-    input[type="text"] {
+    input[type="text"],
+    textarea {
       flex: 1;
       border-radius: 4px;
       border: 1px solid var(--input-border);
@@ -1053,9 +1127,11 @@ class CommandButtonsViewProvider {
       font-size: 12px;
       background-color: var(--input-bg);
       color: var(--input-fg);
+      font-family: inherit;
     }
 
-    input[type="text"]:focus {
+    input[type="text"]:focus,
+    textarea:focus {
       outline: 1px solid var(--focus);
       outline-offset: 1px;
       border-color: var(--focus);
@@ -1067,8 +1143,16 @@ class CommandButtonsViewProvider {
       min-width: 0;
     }
 
-    .autocomplete input[type="text"] {
+    .autocomplete input[type="text"],
+    .autocomplete textarea {
       width: 100%;
+    }
+
+    #commandInput {
+      min-height: 3.25rem;
+      resize: vertical;
+      line-height: 1.35;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
     }
 
     .autocomplete-menu {
@@ -1251,7 +1335,28 @@ class CommandButtonsViewProvider {
       </div>
       <div class="add-form">
         <div class="preset-library">
-          <div class="preset-library-title">Preset library</div>
+          <div class="preset-library-header">
+            <div>
+              <div class="preset-library-title">Preset library</div>
+              <div class="preset-library-subtitle">
+                Search shared presets and your saved presets stored locally.
+              </div>
+            </div>
+            <div class="preset-library-search">
+              <input
+                id="presetSearchInput"
+                type="text"
+                placeholder="Search presets..."
+              />
+              <button
+                id="presetSearchClear"
+                class="btn-secondary"
+                title="Clear search"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
           <div class="preset-filters">
             <div class="preset-filter">
               <label for="presetEnvironmentSelect">Environment</label>
@@ -1261,16 +1366,32 @@ class CommandButtonsViewProvider {
               <label for="presetLanguageSelect">Language</label>
               <select id="presetLanguageSelect"></select>
             </div>
+            <div class="preset-filter">
+              <label for="presetScopeSelect">Scope</label>
+              <select id="presetScopeSelect">
+                <option value="all">All presets</option>
+                <option value="library">Library only</option>
+                <option value="mine">My presets</option>
+              </select>
+            </div>
           </div>
+          <div id="presetLibrarySummary" class="preset-library-summary"></div>
           <div id="presetLibraryList" class="preset-library-list" role="list"></div>
         </div>
-        <div class="preset-row">
-          <select id="presetSelect">
-            <option value="">Saved presets...</option>
-          </select>
-          <button id="presetAddBtn" title="Save the current inputs as a preset">Save preset</button>
-          <button id="presetRemoveBtn" class="btn-delete" title="Remove selected preset">Remove</button>
-          <button id="presetRestoreBtn" class="btn-secondary" title="Restore default presets">Restore defaults</button>
+        <div class="preset-row preset-row-tools">
+          <button
+            id="presetAddBtn"
+            title="Save the current inputs to My Presets (stored locally)"
+          >
+            Save to My Presets
+          </button>
+          <button
+            id="presetRestoreBtn"
+            class="btn-secondary"
+            title="Restore default presets"
+          >
+            Restore defaults
+          </button>
         </div>
         <div class="add-row">
           <input
@@ -1281,11 +1402,11 @@ class CommandButtonsViewProvider {
         </div>
         <div class="add-row">
           <div class="autocomplete" id="commandAutocomplete">
-            <input
+            <textarea
               id="commandInput"
-              type="text"
-              placeholder="Command (e.g. npm run build)"
-            />
+              rows="3"
+              placeholder="Command (paste multi-line, Ctrl+Enter to add)"
+            ></textarea>
             <div
               id="commandSuggestions"
               class="autocomplete-menu"
@@ -1295,7 +1416,7 @@ class CommandButtonsViewProvider {
           <button id="addBtn">Add</button>
         </div>
         <div class="note">
-          Label is optional. Use the run-mode toggles to switch between "Copy + Enter", "Copy only to clipboard", "Copy only to terminal", or "Dynamic Input" (commands containing <code>\${input}</code> will prompt for a value).
+          Label is optional. Use the run-mode toggles to switch between "Copy + Enter", "Copy only to clipboard", "Copy only to terminal", or "Dynamic Input" (commands containing <code>\${input}</code> will prompt for a value). For multi-line commands, press Ctrl+Enter (Cmd+Enter on macOS) to add.
         </div>
       </div>
     </div>
@@ -1314,10 +1435,12 @@ class CommandButtonsViewProvider {
     const mainPanel = document.getElementById('mainPanel');
     const presetEnvironmentSelect = document.getElementById('presetEnvironmentSelect');
     const presetLanguageSelect = document.getElementById('presetLanguageSelect');
+    const presetSearchInput = document.getElementById('presetSearchInput');
+    const presetSearchClear = document.getElementById('presetSearchClear');
+    const presetScopeSelect = document.getElementById('presetScopeSelect');
+    const presetLibrarySummary = document.getElementById('presetLibrarySummary');
     const presetLibraryList = document.getElementById('presetLibraryList');
-    const presetSelect = document.getElementById('presetSelect');
     const presetAddBtn = document.getElementById('presetAddBtn');
-    const presetRemoveBtn = document.getElementById('presetRemoveBtn');
     const presetRestoreBtn = document.getElementById('presetRestoreBtn');
 
     const cols1Btn = document.getElementById('cols1Btn');
@@ -1430,6 +1553,13 @@ class CommandButtonsViewProvider {
         : '';
     let selectedLanguageId =
       typeof viewState.presetLanguageId === 'string' ? viewState.presetLanguageId : '';
+    let presetSearchQuery =
+      typeof viewState.presetSearchQuery === 'string' ? viewState.presetSearchQuery : '';
+    let presetScope =
+      typeof viewState.presetScope === 'string' ? viewState.presetScope : 'all';
+    if (!['all', 'library', 'mine'].includes(presetScope)) {
+      presetScope = 'all';
+    }
     let commands = normalizeCommandsForView(cachedCommands);
     let gridColumns = 2;
     if (Number.isInteger(viewState.gridColumns)) {
@@ -1450,7 +1580,12 @@ class CommandButtonsViewProvider {
       savedPresets = normalizePresetsForView(cachedPresets);
     }
 
-    populatePresetDropdown();
+    if (presetSearchInput) {
+      presetSearchInput.value = presetSearchQuery;
+    }
+    if (presetScopeSelect) {
+      presetScopeSelect.value = presetScope;
+    }
     populatePresetFilters();
     setCollapsed(isCollapsed);
     setGridColumns(gridColumns);
@@ -1634,6 +1769,26 @@ class CommandButtonsViewProvider {
       return normalized;
     }
 
+    function normalizeCommandText(value) {
+      const raw = String(value ?? '');
+      return raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    }
+
+    function updatePresetFilterAvailability() {
+      if (!presetEnvironmentSelect || !presetLanguageSelect) {
+        return;
+      }
+      const envCount = Array.isArray(presetReferenceLibrary.environments)
+        ? presetReferenceLibrary.environments.length
+        : 0;
+      const langCount = Array.isArray(presetReferenceLibrary.languages)
+        ? presetReferenceLibrary.languages.length
+        : 0;
+      const disableFilters = presetScope === 'mine';
+      presetEnvironmentSelect.disabled = disableFilters || envCount === 0;
+      presetLanguageSelect.disabled = disableFilters || langCount === 0;
+    }
+
     function populatePresetFilters() {
       if (!presetEnvironmentSelect || !presetLanguageSelect) {
         return;
@@ -1666,16 +1821,19 @@ class CommandButtonsViewProvider {
       );
       fillSelect(presetLanguageSelect, languages, 'Select language...');
 
-      presetEnvironmentSelect.disabled = environments.length === 0;
-      presetLanguageSelect.disabled = languages.length === 0;
       presetEnvironmentSelect.value = selectedEnvironmentId || '';
       presetLanguageSelect.value = selectedLanguageId || '';
+
+      if (presetScopeSelect) {
+        presetScopeSelect.value = presetScope;
+      }
 
       persistViewState({
         presetEnvironmentId: selectedEnvironmentId,
         presetLanguageId: selectedLanguageId
       });
 
+      updatePresetFilterAvailability();
       renderPresetLibrary();
     }
 
@@ -1708,59 +1866,224 @@ class CommandButtonsViewProvider {
       return groups.find((group) => group.id === groupId) || null;
     }
 
+    function getPresetScopeLabel() {
+      if (presetScope === 'mine') {
+        return 'My presets';
+      }
+      if (presetScope === 'library') {
+        return 'Library only';
+      }
+      return 'All presets';
+    }
+
+    function matchesPresetSearch(cmd, query) {
+      if (!query) {
+        return true;
+      }
+      const label = String(cmd?.label ?? '');
+      const description = String(cmd?.description ?? '');
+      const command = String(cmd?.command ?? '');
+      const haystack = (label + ' ' + description + ' ' + command).toLowerCase();
+      return haystack.includes(query);
+    }
+
+    function filterGroupByQuery(group, query) {
+      if (!group) {
+        return null;
+      }
+      if (!query) {
+        return group;
+      }
+      const categories = group.categories
+        .map((category) => {
+          const commands = category.commands.filter((cmd) =>
+            matchesPresetSearch(cmd, query)
+          );
+          if (!commands.length) {
+            return null;
+          }
+          return { ...category, commands };
+        })
+        .filter(Boolean);
+      if (!categories.length) {
+        return null;
+      }
+      return { ...group, categories };
+    }
+
+    function countGroupCommands(group) {
+      if (!group || !Array.isArray(group.categories)) {
+        return 0;
+      }
+      return group.categories.reduce((total, category) => {
+        if (!category || !Array.isArray(category.commands)) {
+          return total;
+        }
+        return total + category.commands.length;
+      }, 0);
+    }
+
+    function buildCustomPresetGroup() {
+      if (!Array.isArray(savedPresets) || !savedPresets.length) {
+        return null;
+      }
+      const sorted = [...savedPresets].sort((a, b) => {
+        const labelA = (a?.label || a?.text || '').toLowerCase();
+        const labelB = (b?.label || b?.text || '').toLowerCase();
+        return labelA.localeCompare(labelB);
+      });
+      const commands = sorted.map((preset) => ({
+        command: preset.text,
+        description:
+          preset.label && preset.label !== preset.text ? preset.label : undefined,
+        presetId: preset.id,
+        isCustom: true,
+        label: preset.label || preset.text,
+        preset
+      }));
+      return {
+        id: 'my_presets',
+        label: 'My Presets',
+        categories: [
+          {
+            id: 'saved',
+            label: 'Saved presets',
+            commands
+          }
+        ]
+      };
+    }
+
+    function updatePresetLibrarySummary(totalCount, groupCount) {
+      if (!presetLibrarySummary) {
+        return;
+      }
+      const parts = [];
+      if (Number.isInteger(totalCount)) {
+        const label = totalCount === 1 ? 'preset' : 'presets';
+        parts.push(String(totalCount) + ' ' + label);
+      }
+      if (Number.isInteger(groupCount)) {
+        const label = groupCount === 1 ? 'group' : 'groups';
+        parts.push(String(groupCount) + ' ' + label);
+      }
+      parts.push('Scope: ' + getPresetScopeLabel());
+      if (presetScope === 'mine') {
+        parts.push('Stored locally');
+      }
+      const trimmed = String(presetSearchQuery ?? '').trim();
+      if (trimmed) {
+        parts.push('Search: "' + trimmed + '"');
+      }
+      presetLibrarySummary.textContent = parts.join(' • ');
+    }
+
     function renderPresetLibrary() {
       if (!presetLibraryList) {
         return;
       }
       presetLibraryList.innerHTML = '';
 
-      const hasLibrary =
-        (presetReferenceLibrary.environments &&
-          presetReferenceLibrary.environments.length) ||
-        (presetReferenceLibrary.languages && presetReferenceLibrary.languages.length);
-      if (!hasLibrary) {
-        renderPresetLibraryEmpty('Preset library not found.');
-        return;
-      }
-
+      const environments = Array.isArray(presetReferenceLibrary.environments)
+        ? presetReferenceLibrary.environments
+        : [];
+      const languages = Array.isArray(presetReferenceLibrary.languages)
+        ? presetReferenceLibrary.languages
+        : [];
+      const hasLibrary = environments.length > 0 || languages.length > 0;
+      const rawQuery = String(presetSearchQuery ?? '').trim();
+      const query = rawQuery.toLowerCase();
+      const searchAll = Boolean(query) && !selectedEnvironmentId && !selectedLanguageId;
       const selections = [];
-      if (selectedEnvironmentId) {
-        const envGroup = findGroup(
-          presetReferenceLibrary.environments,
-          selectedEnvironmentId
-        );
-        if (envGroup) {
-          selections.push({ kind: 'Environment', group: envGroup });
+
+      if (presetScope !== 'library') {
+        const customGroup = buildCustomPresetGroup();
+        if (customGroup) {
+          selections.push({ kind: 'My Presets', group: customGroup, isCustom: true });
         }
       }
-      if (selectedLanguageId) {
-        const langGroup = findGroup(
-          presetReferenceLibrary.languages,
-          selectedLanguageId
-        );
-        if (langGroup) {
-          selections.push({ kind: 'Language', group: langGroup });
+
+      if (presetScope !== 'mine') {
+        if (!hasLibrary && presetScope === 'library') {
+          renderPresetLibraryEmpty('Preset library not found.');
+          updatePresetLibrarySummary(0, 0);
+          return;
+        }
+
+        if (searchAll) {
+          environments.forEach((group) => {
+            selections.push({ kind: 'Environment', group });
+          });
+          languages.forEach((group) => {
+            selections.push({ kind: 'Language', group });
+          });
+        } else {
+          if (selectedEnvironmentId) {
+            const envGroup = findGroup(environments, selectedEnvironmentId);
+            if (envGroup) {
+              selections.push({ kind: 'Environment', group: envGroup });
+            }
+          }
+          if (selectedLanguageId) {
+            const langGroup = findGroup(languages, selectedLanguageId);
+            if (langGroup) {
+              selections.push({ kind: 'Language', group: langGroup });
+            }
+          }
         }
       }
 
       if (!selections.length) {
-        renderPresetLibraryEmpty(
-          'Select an environment and language to view presets.'
-        );
+        if (presetScope === 'mine') {
+          renderPresetLibraryEmpty('No saved presets yet.');
+        } else if (!hasLibrary) {
+          renderPresetLibraryEmpty('Preset library not found.');
+        } else if (query) {
+          renderPresetLibraryEmpty('No presets match "' + rawQuery + '".');
+        } else {
+          renderPresetLibraryEmpty(
+            'Select an environment or language, or search to browse presets.'
+          );
+        }
+        updatePresetLibrarySummary(0, 0);
         return;
       }
 
+      let totalMatches = 0;
+      let groupMatches = 0;
+
       selections.forEach((selection) => {
+        const filteredGroup = filterGroupByQuery(selection.group, query);
+        if (!filteredGroup) {
+          return;
+        }
+
+        const groupCount = countGroupCommands(filteredGroup);
+        if (!groupCount) {
+          return;
+        }
+
+        totalMatches += groupCount;
+        groupMatches += 1;
+
         const groupEl = document.createElement('div');
         groupEl.className = 'preset-group';
 
         const title = document.createElement('div');
         title.className = 'preset-group-title';
-        title.textContent =
-          selection.kind + ': ' + (selection.group.label || selection.group.id);
+        const titleText =
+          selection.kind === 'My Presets'
+            ? filteredGroup.label || filteredGroup.id
+            : selection.kind + ': ' + (filteredGroup.label || filteredGroup.id);
+        title.textContent = titleText;
+
+        const countEl = document.createElement('span');
+        countEl.className = 'count';
+        countEl.textContent = String(groupCount);
+        title.appendChild(countEl);
         groupEl.appendChild(title);
 
-        selection.group.categories.forEach((category) => {
+        filteredGroup.categories.forEach((category) => {
           const categoryEl = document.createElement('div');
           categoryEl.className = 'preset-category';
 
@@ -1770,6 +2093,60 @@ class CommandButtonsViewProvider {
           categoryEl.appendChild(categoryTitle);
 
           category.commands.forEach((cmd) => {
+            if (cmd.isCustom) {
+              const item = document.createElement('div');
+              item.className = 'preset-item preset-item-custom';
+              item.title = cmd.label
+                ? cmd.label + ' - ' + cmd.command
+                : cmd.command;
+
+              const header = document.createElement('div');
+              header.className = 'preset-item-header';
+
+              const label = document.createElement('div');
+              label.className = 'preset-item-label';
+              label.textContent = cmd.label || cmd.command;
+              header.appendChild(label);
+
+              const actions = document.createElement('div');
+              actions.className = 'preset-item-actions';
+
+              const useBtn = document.createElement('button');
+              useBtn.type = 'button';
+              useBtn.className = 'btn-secondary btn-xs';
+              useBtn.textContent = 'Use';
+              useBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                applySavedPreset(cmd.preset);
+              });
+
+              const removeBtn = document.createElement('button');
+              removeBtn.type = 'button';
+              removeBtn.className = 'btn-delete btn-xs';
+              removeBtn.textContent = 'Remove';
+              removeBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                removeSavedPreset(cmd.presetId);
+              });
+
+              actions.appendChild(useBtn);
+              actions.appendChild(removeBtn);
+              header.appendChild(actions);
+              item.appendChild(header);
+
+              const commandLine = document.createElement('div');
+              commandLine.className = 'command';
+              commandLine.textContent = cmd.command;
+              item.appendChild(commandLine);
+
+              item.addEventListener('click', () => {
+                applySavedPreset(cmd.preset);
+              });
+
+              categoryEl.appendChild(item);
+              return;
+            }
+
             const item = document.createElement('button');
             item.type = 'button';
             item.className = 'preset-item';
@@ -1801,6 +2178,16 @@ class CommandButtonsViewProvider {
 
         presetLibraryList.appendChild(groupEl);
       });
+
+      if (groupMatches === 0) {
+        renderPresetLibraryEmpty(
+          query ? ('No presets match "' + rawQuery + '".') : 'No presets found.'
+        );
+        updatePresetLibrarySummary(0, 0);
+        return;
+      }
+
+      updatePresetLibrarySummary(totalMatches, groupMatches);
     }
 
     function renderPresetLibraryEmpty(message) {
@@ -2069,7 +2456,13 @@ class CommandButtonsViewProvider {
         return null;
       }
       const token = beforeCursor.slice(dollarIndex + 1);
-      if (token.includes(' ') || token.includes('\t') || token.includes('}')) {
+      if (
+        token.includes(' ') ||
+        token.includes('\t') ||
+        token.includes('}') ||
+        token.includes('\n') ||
+        token.includes('\r')
+      ) {
         return null;
       }
       const query = token.startsWith('{') ? token.slice(1) : token;
@@ -2224,18 +2617,19 @@ class CommandButtonsViewProvider {
         }
       }
 
-      if (event.key === 'Enter') {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
         addCommandFromInputs();
       }
     }
 
     function addCommandFromInputs() {
       const label = labelInput.value.trim();
-      const text = commandInput.value.trim();
+      const text = normalizeCommandText(commandInput.value);
 
       vscode.postMessage({ type: 'addCommand', label, text });
 
-      if (text) {
+      if (text.trim()) {
         labelInput.value = '';
         commandInput.value = '';
         hideCommandSuggestions();
@@ -2267,58 +2661,31 @@ class CommandButtonsViewProvider {
       vscode.postMessage({ type: 'updateAllCommandModes', runMode });
     }
 
-    function populatePresetDropdown() {
-      if (!presetSelect) {
+    function applySavedPreset(preset) {
+      if (!preset || !labelInput || !commandInput) {
         return;
       }
-      presetSelect.innerHTML = '';
-      const placeholder = document.createElement('option');
-      placeholder.value = '';
-      placeholder.textContent = 'Saved presets...';
-      presetSelect.appendChild(placeholder);
-
-      savedPresets.forEach((preset, index) => {
-        const opt = document.createElement('option');
-        opt.value = String(index);
-        opt.textContent = preset.label || preset.text;
-        opt.title = preset.text;
-        presetSelect.appendChild(opt);
-      });
-    }
-
-    function applyPresetToInputs(index) {
-      const preset = savedPresets[index];
-      if (!preset) return;
       labelInput.value = preset.label || preset.text;
       commandInput.value = preset.text;
       hideCommandSuggestions();
+      commandInput.focus();
     }
 
     function addPresetFromInputs() {
       const label = labelInput.value.trim();
-      const text = commandInput.value.trim();
+      const text = normalizeCommandText(commandInput.value);
       vscode.postMessage({ type: 'addPreset', label, text });
     }
 
-    function removeSelectedPreset() {
-      if (!presetSelect.value) {
+    function removeSavedPreset(presetId) {
+      if (!presetId) {
         return;
       }
-      const selectedIndex = Number(presetSelect.value);
-      if (Number.isNaN(selectedIndex)) {
-        return;
-      }
-      const preset = savedPresets[selectedIndex];
-      if (!preset || !preset.id) {
-        return;
-      }
-      vscode.postMessage({ type: 'removePreset', id: preset.id });
-      presetSelect.value = '';
+      vscode.postMessage({ type: 'removePreset', id: presetId });
     }
 
     function restorePresetDefaults() {
       vscode.postMessage({ type: 'restorePresetDefaults' });
-      presetSelect.value = '';
     }
 
     function setGridColumns(cols) {
@@ -2427,22 +2794,8 @@ class CommandButtonsViewProvider {
       addPresetFromInputs();
     });
 
-    presetRemoveBtn?.addEventListener('click', () => {
-      removeSelectedPreset();
-    });
-
     presetRestoreBtn?.addEventListener('click', () => {
       restorePresetDefaults();
-    });
-
-    presetSelect.addEventListener('change', () => {
-      if (!presetSelect.value) {
-        return;
-      }
-      const idx = Number(presetSelect.value);
-      if (!Number.isNaN(idx)) {
-        applyPresetToInputs(idx);
-      }
     });
 
     presetEnvironmentSelect?.addEventListener('change', () => {
@@ -2455,6 +2808,39 @@ class CommandButtonsViewProvider {
       selectedLanguageId = presetLanguageSelect.value;
       persistViewState({ presetLanguageId: selectedLanguageId });
       renderPresetLibrary();
+    });
+
+    presetScopeSelect?.addEventListener('change', () => {
+      presetScope = presetScopeSelect.value;
+      persistViewState({ presetScope });
+      updatePresetFilterAvailability();
+      renderPresetLibrary();
+    });
+
+    presetSearchInput?.addEventListener('input', () => {
+      presetSearchQuery = presetSearchInput.value;
+      persistViewState({ presetSearchQuery });
+      renderPresetLibrary();
+    });
+
+    presetSearchInput?.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        presetSearchQuery = '';
+        presetSearchInput.value = '';
+        persistViewState({ presetSearchQuery });
+        renderPresetLibrary();
+      }
+    });
+
+    presetSearchClear?.addEventListener('click', () => {
+      if (!presetSearchInput) {
+        return;
+      }
+      presetSearchQuery = '';
+      presetSearchInput.value = '';
+      persistViewState({ presetSearchQuery });
+      renderPresetLibrary();
+      presetSearchInput.focus();
     });
 
     addBtn.addEventListener('click', () => {
@@ -2505,7 +2891,7 @@ class CommandButtonsViewProvider {
         case 'setPresets': {
           savedPresets = normalizePresetsForView(message.presets);
           persistViewState({ presets: savedPresets });
-          populatePresetDropdown();
+          renderPresetLibrary();
           break;
         }
         case 'setPresetLibrary': {

@@ -2,6 +2,17 @@
 
 All notable changes to the "Command Buttons Panel" extension will be documented in this file.
 
+## [0.3.1] - 2026-02-03
+
+### Added
+- Multi-line command input with preserved line breaks (Ctrl/Cmd+Enter to add).
+- Preset library search and scope filter (All/Library/My presets) with result counts.
+- "My Presets" section with quick use/remove actions for locally saved presets.
+- Expanded preset library coverage (Docker, Kubernetes, .NET, Go, Rust, Java, plus more Git/terminal/JS/Python commands).
+
+### Changed
+- Preset library layout to make browsing and finding presets easier.
+
 ## [0.2.9] - 2026-01-27
 
 ### Added

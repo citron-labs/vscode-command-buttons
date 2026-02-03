@@ -53,7 +53,9 @@ Run your go-to terminal commands from a draggable grid in the Explorer. Add butt
 - Drag to reorder commands and pick 1-4 grid columns.
 - Four run modes: Copy + Enter (default), Copy only to clipboard, Copy only to terminal, and Dynamic Input using a `${input}` placeholder with synced values across the UI.
 - Dedicated terminal named **Command Buttons** that is created once and reused.
-- Preset library sourced from `terminal-command-reference.json`, organized by environment and language selectors.
+- Multi-line command input with preserved line breaks (Ctrl/Cmd+Enter to add).
+- Preset library sourced from `terminal-command-reference.json`, with search, scope (All/Library/My presets), and environment/language filters.
+- Save your own presets locally and access them from the **My Presets** section.
 - Commands persist per workspace when one is open, otherwise globally; Settings Sync can keep them in sync.
 - Accent/button color can be customized via the `commandButtons.accentColor` setting.
 
@@ -73,10 +75,11 @@ Run your go-to terminal commands from a draggable grid in the Explorer. Add butt
 
 ## Usage
 1. Open the Explorer view and find **Command Buttons**.
-2. Add a command (label optional). Use `${input}` to prompt for a value when running.
-3. Click a command's mode chip to cycle its run mode; use the toolbar buttons to set a mode for every command.
-4. Drag buttons in the grid to reorder; change the grid column count with the toolbar toggles.
-5. Click any button to run it; the extension opens/reuses the **Command Buttons** terminal.
+2. Add a command (label optional). Paste multi-line commands and press Ctrl+Enter (Cmd+Enter on macOS) to add.
+3. Use `${input}` to prompt for a value when running.
+4. Click a command's mode chip to cycle its run mode; use the toolbar buttons to set a mode for every command.
+5. Drag buttons in the grid to reorder; change the grid column count with the toolbar toggles.
+6. Click any button to run it; the extension opens/reuses the **Command Buttons** terminal.
 
 ### Dynamic Input
 - Insert `${input}` anywhere in the command text.
@@ -123,9 +126,10 @@ Use these placeholders in commands (they mirror VS Code task variables):
 </details>
 
 ### Presets
-- Use the preset library filters to pick an environment and language, then click a preset to load it into the inputs.
-- The preset library is sourced from `terminal-command-reference.json` and grouped into environment and language sections.
-- Use the saved presets dropdown to reuse your custom entries or restore the built-in defaults.
+- Use search to quickly find presets, or filter by environment/language when browsing the library.
+- Switch the scope filter to show **All presets**, **Library only**, or **My presets**.
+- Save custom presets locally with **Save to My Presets**, then reuse or remove them from the **My Presets** section.
+- Restore the built-in defaults anytime.
 
 ### Appearance
 - `commandButtons.accentColor` sets the accent/button color for the panel.
@@ -168,6 +172,11 @@ Example `settings.json`:
 </table>
 
 ## Release Notes
+### 0.3.1
+- Multi-line command input (Ctrl/Cmd+Enter to add) with preserved line breaks.
+- Preset library search + scope filter, plus a dedicated **My Presets** section.
+- Expanded preset library coverage for common tasks.
+
 ### 0.2.9
 - Added duplicate "Visual guide" section at the top of the README for improved user visibility.
 
